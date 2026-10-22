@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Picture Window</string>
+    <string name="dream_label">Picture Window</string>
+    <string name="photo_by">Photo by %1$s</string>
+    <string name="dream_waiting">Picture Window is downloading photos…</string>
+    <string name="feed_url_label">Feed URL</string>
+    <string name="show_clock">Show the clock on the screensaver</string>
+    <string name="save">Save</string>
+    <string name="sync_now">Sync now</string>
+    <string name="saved">Saved</string>
+    <string name="sync_started">Sync started</string>
+    <string name="status">%1$d of %2$d photos on this TV · %3$s</string>
+    <string name="screensaver_help">To use the screensaver, pick Picture Window under Settings → System → Ambient mode (or Screensaver). Some TVs hide that choice; see the install guide.</string>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="overlay_margin">48dp</dimen>
+    <dimen name="clock_text">56sp</dimen>
+    <dimen name="credit_text">18sp</dimen>
+    <dimen name="credit_max_width">560dp</dimen>
+</resources>
