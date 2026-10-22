@@ -11,5 +11,7 @@
     <dimen name="credit_text">13sp</dimen>
     <dimen name="credit_max_width">400dp</dimen>
     <dimen name="place_text">11sp</dimen>
+    <dimen name="about_text">15sp</dimen>
+    <dimen name="about_gap">-12dp</dimen>
     <dimen name="place_gap">-10dp</dimen>
 </resources>

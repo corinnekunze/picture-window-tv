@@ -70,7 +70,8 @@
             android:textSize="@dimen/date_text" />
     </LinearLayout>
 
-    <!-- "Photo by …" (up to two lines for long observatory credits) with the place under it. -->
+    <!-- What the photo shows, then "Photo by …" (up to two lines for long observatory credits), then
+         the place. -->
     <LinearLayout
         android:id="@+id/caption"
         android:layout_width="wrap_content"
@@ -80,6 +81,20 @@
         android:layout_marginBottom="@dimen/credit_margin_bottom"
         android:gravity="end"
         android:orientation="vertical">
+
+        <com.mtdetc.picturewindow.dream.ShadowTextView
+            android:id="@+id/about"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/about_gap"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit_regular"
+            android:gravity="end"
+            android:maxLines="2"
+            android:maxWidth="@dimen/credit_max_width"
+            android:textColor="@color/overlay_text"
+            android:textSize="@dimen/about_text"
+            android:visibility="gone" />
 
         <com.mtdetc.picturewindow.dream.ShadowTextView
             android:id="@+id/credit"

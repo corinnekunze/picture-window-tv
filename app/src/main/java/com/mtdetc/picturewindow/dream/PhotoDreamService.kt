@@ -36,6 +36,7 @@ class PhotoDreamService : DreamService() {
     private lateinit var veil: View
     private lateinit var clock: View
     private lateinit var caption: View
+    private lateinit var about: ShadowTextView
     private lateinit var credit: ShadowTextView
     private lateinit var place: ShadowTextView
     private lateinit var videoLayer: VideoLayer
@@ -65,6 +66,7 @@ class PhotoDreamService : DreamService() {
         veil = findViewById(R.id.veil)
         clock = findViewById(R.id.clock)
         caption = findViewById(R.id.caption)
+        about = findViewById(R.id.about)
         credit = findViewById(R.id.credit)
         place = findViewById(R.id.place)
         videoLayer = VideoLayer(findViewById(R.id.photo_video), handler)
@@ -235,8 +237,11 @@ class PhotoDreamService : DreamService() {
         val photoCredit = photo.item.credit
         credit.text = if (photoCredit != null) getString(R.string.photo_by, photoCredit) else ""
         credit.visibility = if (photoCredit != null) View.VISIBLE else View.GONE
-        place.text = photo.item.place.orEmpty()
-        place.visibility = if (photo.item.place != null) View.VISIBLE else View.GONE
+        about.text = photo.item.about.orEmpty()
+        about.visibility = if (photo.item.about != null) View.VISIBLE else View.GONE
+        val shownPlace = PlaceLine.toShow(photo.item.place, photo.item.about)
+        place.text = shownPlace.orEmpty()
+        place.visibility = if (shownPlace != null) View.VISIBLE else View.GONE
     }
 
     private fun moveText() {

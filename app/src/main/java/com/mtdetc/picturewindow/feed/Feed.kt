@@ -58,6 +58,8 @@ data class FeedItem(
     val credit: String? = null,
     /** Roughly where it was taken, e.g. "Zug, Switzerland". */
     val place: String? = null,
+    /** One line about what it shows, e.g. "Great Grey Shrike in Bhigwan, Maharashtra, India". */
+    val about: String? = null,
 )
 
 class FeedFormatException(message: String) : Exception(message)
