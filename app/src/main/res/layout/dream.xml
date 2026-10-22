@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Matches the mockup and CleanYourTV's own Clock screensaver: Outfit, a thin clock with the date
-     under it bottom-left, the photographer's name bottom-right. -->
+     under it bottom-left, the photographer's name bottom-right. Stacking order, bottom to top: the 4K
+     video (on the TV's video layer, behind the window), the two images, the black veil used to fade
+     between videos, then the text. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@android:color/transparent">
+
+    <SurfaceView
+        android:id="@+id/photo_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <ImageView
         android:id="@+id/photo_back"
@@ -20,6 +27,14 @@
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
         android:scaleType="centerCrop" />
+
+    <View
+        android:id="@+id/veil"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="@android:color/black"
+        android:importantForAccessibility="no" />
 
     <LinearLayout
         android:id="@+id/clock"

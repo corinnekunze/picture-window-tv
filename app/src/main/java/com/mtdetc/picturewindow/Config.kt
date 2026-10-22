@@ -6,8 +6,11 @@ object Config {
     const val USER_AGENT = "PictureWindowTV/0.1 (+https://github.com/corinnekunze/picture-window)"
     const val PROVIDER_AUTHORITY = "com.mtdetc.picturewindow.photos"
 
-    /** Photos kept on the TV. The feed is larger, so older, already-shown photos make room. */
-    const val CACHE_BUDGET_BYTES = 1_200_000_000L
+    /**
+     * Photos kept on the TV, images and 4K videos together (about 4.5 MB a photo). The feed is larger,
+     * so older, already-shown photos make room.
+     */
+    const val CACHE_BUDGET_BYTES = 2_000_000_000L
 
     /** Free space left on the TV's storage no matter what the budget allows. */
     const val MIN_FREE_BYTES = 2_000_000_000L

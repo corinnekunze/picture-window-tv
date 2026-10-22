@@ -5,10 +5,12 @@ import android.os.Handler
 import android.os.Looper
 import android.service.dreams.DreamService
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import com.mtdetc.picturewindow.Config
 import com.mtdetc.picturewindow.PictureWindowApp
 import com.mtdetc.picturewindow.R
+import com.mtdetc.picturewindow.VideoSupport
 import com.mtdetc.picturewindow.rotation.CurrentPhoto
 import com.mtdetc.picturewindow.settings.AppSettings
 import com.mtdetc.picturewindow.sync.SyncScheduler
@@ -17,19 +19,28 @@ import java.util.concurrent.Executors
 import kotlin.random.Random
 
 /**
- * The photo screensaver: the current photo full screen, crossfading when the rotation moves on, with
- * the clock and date in the bottom-left corner and "Photo by …" in the bottom-right. Both move a little
- * every minute against burn-in, but only while faded out, so they never visibly slide. It checks the rotation on the same tick, so a revoked photo goes within a minute.
+ * The photo screensaver: the current photo full screen, with the clock and date in the bottom-left
+ * corner and "Photo by …" in the bottom-right. The text moves a little every minute against burn-in,
+ * but only while faded out, so it never visibly slides. It checks the rotation on the same tick, so a
+ * revoked photo goes within a minute.
+ *
+ * Photos show as their 4K video when the TV has it (apps draw at 1080p; video reaches the panel at
+ * full resolution), fading through black, and otherwise as the 1080p image, crossfading. A video that
+ * won't play falls back to its image and isn't tried again this session.
  */
 class PhotoDreamService : DreamService() {
     private val handler = Handler(Looper.getMainLooper())
     private var decoder: ExecutorService? = null
     private lateinit var frontImage: ImageView
     private lateinit var backImage: ImageView
+    private lateinit var veil: View
     private lateinit var clock: View
     private lateinit var credit: ShadowTextView
+    private lateinit var videoLayer: VideoLayer
     @Volatile private var shownId: String? = null
     private var shownBitmap: Bitmap? = null
+    private var showingVideo = false
+    private val failedVideoIds = mutableSetOf<String>()
 
     private val tick = object : Runnable {
         override fun run() {
@@ -49,8 +60,10 @@ class PhotoDreamService : DreamService() {
         setContentView(R.layout.dream)
         frontImage = findViewById(R.id.photo_front)
         backImage = findViewById(R.id.photo_back)
+        veil = findViewById(R.id.veil)
         clock = findViewById(R.id.clock)
         credit = findViewById(R.id.credit)
+        videoLayer = VideoLayer(findViewById(R.id.photo_video), handler)
         clock.visibility = if (AppSettings(this).showClock) View.VISIBLE else View.GONE
     }
 
@@ -65,10 +78,12 @@ class PhotoDreamService : DreamService() {
         handler.removeCallbacksAndMessages(null)
         decoder?.shutdownNow()
         decoder = null
+        videoLayer.release()
         super.onDreamingStopped()
     }
 
     override fun onDetachedFromWindow() {
+        videoLayer.release()
         frontImage.setImageDrawable(null)
         backImage.setImageDrawable(null)
         shownBitmap?.recycle()
@@ -86,10 +101,22 @@ class PhotoDreamService : DreamService() {
             }
             scheduleNextPhoto(current)
             if (current.item.id == shownId) return@execute
-            val metrics = resources.displayMetrics
-            val bitmap = PhotoDecoder.decode(current.file, metrics.widthPixels, metrics.heightPixels) ?: return@execute
-            handler.post { crossfadeTo(current, bitmap) }
+            if (canPlayVideo(current)) {
+                handler.post { fadeToVideo(current) }
+                return@execute
+            }
+            decodeAndShowImage(current)
         }
+    }
+
+    private fun canPlayVideo(photo: CurrentPhoto): Boolean =
+        photo.video != null && VideoSupport.canPlay4k && photo.item.id !in failedVideoIds
+
+    /** Runs on the decoder thread. */
+    private fun decodeAndShowImage(photo: CurrentPhoto) {
+        val metrics = resources.displayMetrics
+        val bitmap = PhotoDecoder.decode(photo.file, metrics.widthPixels, metrics.heightPixels) ?: return
+        handler.post { crossfadeTo(photo, bitmap) }
     }
 
     private fun scheduleNextPhoto(current: CurrentPhoto) {
@@ -103,6 +130,32 @@ class PhotoDreamService : DreamService() {
         credit.setText(R.string.dream_waiting)
     }
 
+    /** Fades to black, swaps in the video underneath, and fades back once its frame is up. */
+    private fun fadeToVideo(photo: CurrentPhoto) {
+        if (decoder == null) return
+        shownId = photo.item.id
+        relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
+        veil.animate().alpha(1f).setDuration(Config.CROSSFADE_MS / 2).withEndAction {
+            clearImages()
+            showingVideo = true
+            videoLayer.play(
+                photo.video!!,
+                onShowing = { veil.animate().alpha(0f).setDuration(Config.CROSSFADE_MS / 2).start() },
+                onFailed = { videoFailed(photo) },
+            )
+        }.start()
+    }
+
+    private fun videoFailed(photo: CurrentPhoto) {
+        failedVideoIds += photo.item.id
+        showingVideo = false
+        decoder?.execute { decodeAndShowImage(photo) }
+    }
+
+    /**
+     * Crossfades to [bitmap]. The two image views keep a fixed stacking order (so the veil and the text
+     * always stay above them), so whichever view is on top does the fading.
+     */
     private fun crossfadeTo(photo: CurrentPhoto, bitmap: Bitmap) {
         if (decoder == null) {
             bitmap.recycle()
@@ -110,21 +163,50 @@ class PhotoDreamService : DreamService() {
         }
         val outgoingBitmap = shownBitmap
         val outgoingImage = frontImage
+        val incomingImage = backImage
         shownId = photo.item.id
         shownBitmap = bitmap
-        backImage.setImageBitmap(bitmap)
-        backImage.alpha = 0f
-        backImage.animate().alpha(1f).setDuration(Config.CROSSFADE_MS).withEndAction {
+        incomingImage.setImageBitmap(bitmap)
+        val afterFade = Runnable {
             outgoingImage.setImageDrawable(null)
+            outgoingImage.alpha = 0f
             outgoingBitmap?.recycle()
-        }.start()
-        outgoingImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).start()
+            leaveVideo()
+        }
+        // Fading the outgoing view only works if it's showing something (not after a video).
+        if (isAbove(incomingImage, outgoingImage) || outgoingImage.alpha == 0f) {
+            incomingImage.alpha = 0f
+            incomingImage.animate().alpha(1f).setDuration(Config.CROSSFADE_MS).withEndAction(afterFade).start()
+        } else {
+            incomingImage.alpha = 1f
+            outgoingImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).withEndAction(afterFade).start()
+        }
+        veil.animate().alpha(0f).setDuration(Config.CROSSFADE_MS / 2).start()
         relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
-        frontImage = backImage
+        frontImage = incomingImage
         backImage = outgoingImage
-        frontImage.bringToFront()
-        clock.bringToFront()
-        credit.bringToFront()
+    }
+
+    private fun isAbove(view: View, other: View): Boolean {
+        val parent = view.parent as ViewGroup
+        return parent.indexOfChild(view) > parent.indexOfChild(other)
+    }
+
+    /** Once an image covers the screen, the video underneath can go. */
+    private fun leaveVideo() {
+        if (!showingVideo) return
+        showingVideo = false
+        videoLayer.release()
+    }
+
+    private fun clearImages() {
+        listOf(frontImage, backImage).forEach { image ->
+            image.animate().cancel()
+            image.alpha = 0f
+            image.setImageDrawable(null)
+        }
+        shownBitmap?.recycle()
+        shownBitmap = null
     }
 
     /**

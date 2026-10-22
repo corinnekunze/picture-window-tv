@@ -13,6 +13,7 @@ sealed interface CacheStep {
  * be the last to come round again). Photos already shown are only downloaded again into free space,
  * so a TV that has seen everything stops downloading until a new batch arrives.
  *
+ * Sizes come from [sizeOf], so a TV that also keeps each photo's video budgets for both files.
  * Steps come in order: each eviction sits just before the download it makes room for, so a failed
  * download never costs more than the space it was given.
  */
@@ -20,34 +21,35 @@ object CachePlanner {
 
     fun plan(
         catalog: Catalog,
-        cached: Map<String, Long>,
+        cachedIds: Set<String>,
         lastShown: Map<String, Long>,
         currentId: String?,
         budgetBytes: Long,
+        sizeOf: (FeedItem) -> Long = FeedItem::bytes,
     ): List<CacheStep> {
-        val catalogIds = catalog.entries.map { entry -> entry.item.id }.toSet()
+        val itemsById = catalog.entries.associate { entry -> entry.item.id to entry.item }
         val steps = mutableListOf<CacheStep>()
-        cached.keys.filter { id -> id !in catalogIds }.forEach { id -> steps += CacheStep.Evict(id) }
+        cachedIds.filter { id -> id !in itemsById }.forEach { id -> steps += CacheStep.Evict(id) }
 
-        var usedBytes = cached.filterKeys { id -> id in catalogIds }.values.sum()
-        val evictable = ArrayDeque(evictionOrder(cached.keys, catalogIds, lastShown, currentId))
-        val uncached = catalog.entries.map { entry -> entry.item }.filter { item -> item.id !in cached }
+        var usedBytes = cachedIds.mapNotNull(itemsById::get).sumOf(sizeOf)
+        val evictable = ArrayDeque(evictionOrder(cachedIds, itemsById.keys, lastShown, currentId))
+        val uncached = catalog.entries.map { entry -> entry.item }.filter { item -> item.id !in cachedIds }
 
         for (item in uncached.filter { item -> item.id !in lastShown }) {
-            while (usedBytes + item.bytes > budgetBytes && evictable.isNotEmpty()) {
+            while (usedBytes + sizeOf(item) > budgetBytes && evictable.isNotEmpty()) {
                 val id = evictable.removeFirst()
                 steps += CacheStep.Evict(id)
-                usedBytes -= cached.getValue(id)
+                usedBytes -= sizeOf(itemsById.getValue(id))
             }
-            if (usedBytes + item.bytes > budgetBytes) break
+            if (usedBytes + sizeOf(item) > budgetBytes) break
             steps += CacheStep.Download(item)
-            usedBytes += item.bytes
+            usedBytes += sizeOf(item)
         }
 
         for (item in uncached.filter { item -> item.id in lastShown }.sortedBy { item -> lastShown[item.id] }) {
-            if (usedBytes + item.bytes > budgetBytes) continue
+            if (usedBytes + sizeOf(item) > budgetBytes) continue
             steps += CacheStep.Download(item)
-            usedBytes += item.bytes
+            usedBytes += sizeOf(item)
         }
         return steps
     }

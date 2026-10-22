@@ -50,4 +50,14 @@ class FeedParserTest {
         )
         assertEquals(listOf("wmc-1"), parsed.items.map { item -> item.id })
     }
+
+    @Test
+    fun `reads a video, and drops only the video when it's malformed`() {
+        val good = ""","video":{"url":"https://example.test/x.mp4","bytes":5,"sha256":"$sha"}"""
+        val bad = ""","video":{"url":"https://example.test/x.mp4","bytes":5,"sha256":"nope"}"""
+        val parsed = FeedParser.parseManifest(manifest(items = item(id = "wmc-1", extra = good) + "," + item(id = "wmc-2", extra = bad)))
+        assertEquals(5L, parsed.items[0].video?.bytes)
+        assertEquals("wmc-2", parsed.items[1].id)
+        assertEquals(null, parsed.items[1].video)
+    }
 }

@@ -3,7 +3,10 @@ package com.mtdetc.picturewindow.sync
 import com.mtdetc.picturewindow.feed.DownloadOutcome
 import com.mtdetc.picturewindow.feed.FeedClient
 import com.mtdetc.picturewindow.feed.FeedIndex
+import com.mtdetc.picturewindow.feed.FeedItem
 import com.mtdetc.picturewindow.feed.IndexResult
+import com.mtdetc.picturewindow.feed.file
+import com.mtdetc.picturewindow.feed.image
 import com.mtdetc.picturewindow.store.CacheStep
 import com.mtdetc.picturewindow.store.CachePlanner
 import com.mtdetc.picturewindow.store.Catalog
@@ -19,11 +22,15 @@ data class SyncResult(val complete: Boolean, val downloaded: Int, val corrupt: I
  * One sync: refresh the catalog from the feed (skipped on 304), drop revoked and stale photos, then
  * download within the budget. Any problem with the index or a manifest keeps the old catalog: fail
  * closed. A single bad photo is skipped, not fatal.
+ *
+ * When [wantVideos] (the TV can decode 4K HEVC), each photo's video comes with it, budgeted with the
+ * image. A missing or bad video only costs the 4K version; the screensaver falls back to the image.
  */
 class Syncer(
     private val store: PhotoStore,
     private val client: FeedClient,
     private val budgetBytes: () -> Long,
+    private val wantVideos: () -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val running = AtomicBoolean(false)
@@ -83,17 +90,32 @@ class Syncer(
     }
 
     private fun fillCache(shouldContinue: () -> Boolean): SyncResult {
-        val steps = planSteps()
+        val withVideos = wantVideos()
+        val steps = planSteps(withVideos)
         var downloaded = 0
         var corrupt = 0
+        // Videos that failed their checksum this sync; they get another try on the next one.
+        val badVideoIds = mutableSetOf<String>()
         for (step in steps) {
             if (!shouldContinue()) return SyncResult(false, downloaded, corrupt, "Stopped early; $downloaded downloaded")
             when (step) {
                 is CacheStep.Evict -> evict(step.id)
-                is CacheStep.Download -> when (download(step)) {
-                    DownloadOutcome.SAVED -> downloaded++
+                is CacheStep.Download -> when (downloadImage(step.item)) {
+                    DownloadOutcome.SAVED -> {
+                        downloaded++
+                        if (withVideos && downloadVideo(step.item) == DownloadOutcome.CORRUPT) {
+                            corrupt++
+                            badVideoIds += step.item.id
+                        }
+                    }
                     DownloadOutcome.CORRUPT -> corrupt++
                 }
+            }
+        }
+        if (withVideos) {
+            for (item in photosMissingVideos().filter { item -> item.id !in badVideoIds }) {
+                if (!shouldContinue()) return SyncResult(false, downloaded, corrupt, "Stopped early; $downloaded downloaded")
+                if (downloadVideo(item) == DownloadOutcome.CORRUPT) corrupt++
             }
         }
         val (cachedCount, catalogCount) = synchronized(store.lock) {
@@ -102,11 +124,19 @@ class Syncer(
         return SyncResult(true, downloaded, corrupt, "$cachedCount of $catalogCount photos on the TV" + corruptNote(corrupt))
     }
 
-    private fun planSteps(): List<CacheStep> = synchronized(store.lock) {
+    private fun planSteps(withVideos: Boolean): List<CacheStep> = synchronized(store.lock) {
         val catalog = store.readCatalog()
         val rotation = store.readRotation()
         store.deleteStrayPartials(catalog.entries.map { entry -> entry.item.id }.toSet())
-        CachePlanner.plan(catalog, store.cachedPhotos(), rotation.lastShown, rotation.currentId, budgetBytes())
+        val sizeOf = { item: FeedItem -> item.bytes + if (withVideos) item.video?.bytes ?: 0 else 0 }
+        CachePlanner.plan(catalog, store.cachedPhotos(), rotation.lastShown, rotation.currentId, budgetBytes(), sizeOf)
+    }
+
+    /** Photos on the TV whose video the feed offers but the TV doesn't have yet (e.g. added later). */
+    private fun photosMissingVideos(): List<FeedItem> = synchronized(store.lock) {
+        val cachedIds = store.cachedPhotos()
+        store.readCatalog().entries.map { entry -> entry.item }
+            .filter { item -> item.id in cachedIds && item.video != null && !store.videoFile(item.id).exists() }
     }
 
     private fun evict(id: String) = synchronized(store.lock) {
@@ -118,9 +148,12 @@ class Syncer(
         store.deletePhoto(id)
     }
 
-    private fun download(step: CacheStep.Download): DownloadOutcome {
-        val id = step.item.id
-        return client.download(step.item, store.partialFile(id), store.photoFile(id))
+    private fun downloadImage(item: FeedItem): DownloadOutcome =
+        client.download(item.image, store.partialFile(item.id), store.photoFile(item.id))
+
+    private fun downloadVideo(item: FeedItem): DownloadOutcome? {
+        val video = item.video ?: return null
+        return client.download(video.file, store.videoPartialFile(item.id), store.videoFile(item.id))
     }
 
     private fun corruptNote(corrupt: Int) = if (corrupt == 0) "" else "; $corrupt failed their checksum and were skipped"

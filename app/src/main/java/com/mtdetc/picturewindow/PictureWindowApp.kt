@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 class PictureWindowApp : Application() {
     val store by lazy { PhotoStore(filesDir) }
     val library by lazy { PhotoLibrary(store, Rotation(), intervalMs = { AppSettings(this).rotationIntervalMs }) }
-    val syncer by lazy { Syncer(store, FeedClient(httpClient()), ::cacheBudgetBytes) }
+    val syncer by lazy { Syncer(store, FeedClient(httpClient()), ::cacheBudgetBytes, wantVideos = { VideoSupport.canPlay4k }) }
 
     override fun onCreate() {
         super.onCreate()
@@ -24,7 +24,7 @@ class PictureWindowApp : Application() {
 
     /** The configured budget, shrunk if the TV's storage is running low. */
     private fun cacheBudgetBytes(): Long {
-        val ourBytes = store.cachedPhotos().values.sum()
+        val ourBytes = store.bytesOnDisk()
         val spareBytes = filesDir.usableSpace - Config.MIN_FREE_BYTES
         return minOf(Config.CACHE_BUDGET_BYTES, ourBytes + spareBytes).coerceAtLeast(0)
     }

@@ -16,6 +16,12 @@ sealed interface IndexResult {
 
 enum class DownloadOutcome { SAVED, CORRUPT }
 
+/** Anything the feed points at with a size and a hash: a photo's image or its video. */
+data class RemoteFile(val url: String, val bytes: Long, val sha256: String)
+
+val FeedItem.image get() = RemoteFile(url, bytes, sha256)
+val FeedVideo.file get() = RemoteFile(url, bytes, sha256)
+
 class FeedClient(private val http: OkHttpClient) {
 
     fun fetchIndex(url: String, etag: String?): IndexResult {
@@ -38,33 +44,33 @@ class FeedClient(private val http: OkHttpClient) {
     }
 
     /**
-     * Downloads [item] into [partial], resuming from what's already there, then moves it to [target]
+     * Downloads [remote] into [partial], resuming from what's already there, then moves it to [target]
      * once its size and SHA-256 match. A mismatch deletes the partial file. Network errors throw and
      * leave the partial file for the next attempt.
      */
-    fun download(item: FeedItem, partial: File, target: File): DownloadOutcome {
-        val resumeFrom = resumableLength(item, partial)
-        val request = baseRequest(item.url)
+    fun download(remote: RemoteFile, partial: File, target: File): DownloadOutcome {
+        val resumeFrom = resumableLength(remote, partial)
+        val request = baseRequest(remote.url)
             .apply { if (resumeFrom > 0) header("Range", "bytes=$resumeFrom-") }
             .build()
         http.newCall(request).execute().use { response ->
-            if (response.code == 416) return finish(item, partial, target)
-            requireSuccess(response, item.url)
+            if (response.code == 416) return finish(remote, partial, target)
+            requireSuccess(response, remote.url)
             val append = resumeFrom > 0 && response.code == 206
             FileOutputStream(partial, append).use { output -> response.body!!.byteStream().copyTo(output) }
         }
-        return finish(item, partial, target)
+        return finish(remote, partial, target)
     }
 
-    private fun resumableLength(item: FeedItem, partial: File): Long {
+    private fun resumableLength(remote: RemoteFile, partial: File): Long {
         if (!partial.exists()) return 0
-        if (partial.length() <= item.bytes) return partial.length()
+        if (partial.length() <= remote.bytes) return partial.length()
         partial.delete()
         return 0
     }
 
-    private fun finish(item: FeedItem, partial: File, target: File): DownloadOutcome {
-        if (partial.length() != item.bytes || sha256Hex(partial) != item.sha256) {
+    private fun finish(remote: RemoteFile, partial: File, target: File): DownloadOutcome {
+        if (partial.length() != remote.bytes || sha256Hex(partial) != remote.sha256) {
             partial.delete()
             return DownloadOutcome.CORRUPT
         }

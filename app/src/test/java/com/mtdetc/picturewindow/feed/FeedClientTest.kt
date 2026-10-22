@@ -47,7 +47,7 @@ class FeedClientTest {
         val target = folder.root.resolve("wmc-1.webp")
         server.enqueue(MockResponse().setResponseCode(206).setBody(Buffer().write(photo.copyOfRange(400, 1000))))
 
-        assertEquals(DownloadOutcome.SAVED, client.download(item, partial, target))
+        assertEquals(DownloadOutcome.SAVED, client.download(item.image, partial, target))
         assertEquals("bytes=400-", server.takeRequest().getHeader("Range"))
         assertArrayEquals(photo, target.readBytes())
         assertFalse(partial.exists())
@@ -60,7 +60,7 @@ class FeedClientTest {
         val target = folder.root.resolve("wmc-1.webp")
         server.enqueue(MockResponse().setBody(Buffer().write(photo)))
 
-        assertEquals(DownloadOutcome.SAVED, client.download(item, partial, target))
+        assertEquals(DownloadOutcome.SAVED, client.download(item.image, partial, target))
         assertArrayEquals(photo, target.readBytes())
     }
 
@@ -71,7 +71,7 @@ class FeedClientTest {
         val target = folder.root.resolve("wmc-1.webp")
         server.enqueue(MockResponse().setBody(Buffer().write(ByteArray(1000))))
 
-        assertEquals(DownloadOutcome.CORRUPT, client.download(item, partial, target))
+        assertEquals(DownloadOutcome.CORRUPT, client.download(item.image, partial, target))
         assertFalse(partial.exists())
         assertFalse(target.exists())
     }

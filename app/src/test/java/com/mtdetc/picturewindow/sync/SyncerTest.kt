@@ -3,6 +3,7 @@ package com.mtdetc.picturewindow.sync
 import com.mtdetc.picturewindow.TestData
 import com.mtdetc.picturewindow.feed.FeedClient
 import com.mtdetc.picturewindow.feed.FeedItem
+import com.mtdetc.picturewindow.feed.FeedVideo
 import com.mtdetc.picturewindow.store.PhotoStore
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -49,6 +50,14 @@ class SyncerTest {
         return TestData.item(id, content = content, url = server.url("/$id.webp").toString())
     }
 
+    private fun withVideo(item: FeedItem): FeedItem {
+        val content = "video ${item.id}".encodeToByteArray() + ByteArray(200)
+        files["/${item.id}.mp4"] = content
+        return item.copy(video = FeedVideo(server.url("/${item.id}.mp4").toString(), content.size.toLong(), FeedClient.sha256Hex(content)))
+    }
+
+    private fun videoSyncer() = Syncer(store, FeedClient(OkHttpClient()), budgetBytes = { 10_000 }, wantVideos = { true })
+
     private fun publish(items: List<FeedItem>, revoked: List<String> = emptyList()) {
         val manifest = """{"schema":1,"batch":"2026-10","published":"p","items":${Json.encodeToString(items)}}"""
         files["/batches/2026-10.json"] = manifest.encodeToByteArray()
@@ -65,7 +74,7 @@ class SyncerTest {
         publish(listOf(photo("wmc-1"), photo("wmc-2")))
         val result = syncer.sync(indexUrl())
         assertTrue(result.complete)
-        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos().keys)
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
     }
 
     @Test
@@ -74,7 +83,7 @@ class SyncerTest {
         syncer.sync(indexUrl())
         publish(listOf(photo("wmc-1"), photo("wmc-2")), revoked = listOf("wmc-2"))
         syncer.sync(indexUrl())
-        assertEquals(setOf("wmc-1"), store.cachedPhotos().keys)
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
         assertEquals(listOf("wmc-1"), store.readCatalog().entries.map { entry -> entry.item.id })
     }
 
@@ -88,7 +97,7 @@ class SyncerTest {
         val result = syncer.sync(indexUrl())
         assertFalse(result.complete)
         assertEquals(listOf("wmc-1"), store.readCatalog().entries.map { entry -> entry.item.id })
-        assertEquals(setOf("wmc-1"), store.cachedPhotos().keys)
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
     }
 
     @Test
@@ -99,6 +108,44 @@ class SyncerTest {
         publish(listOf(good, bad))
         val result = syncer.sync(indexUrl())
         assertEquals(1, result.corrupt)
-        assertEquals(setOf("wmc-1"), store.cachedPhotos().keys)
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
+    }
+
+    @Test
+    fun `downloads each photo's video when the TV can play it`() {
+        publish(listOf(withVideo(photo("wmc-1")), photo("wmc-2")))
+        assertTrue(videoSyncer().sync(indexUrl()).complete)
+        assertTrue(store.videoFile("wmc-1").exists())
+        assertFalse(store.videoFile("wmc-2").exists())
+    }
+
+    @Test
+    fun `leaves videos alone on a TV that can't play them`() {
+        publish(listOf(withVideo(photo("wmc-1"))))
+        syncer.sync(indexUrl())
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
+        assertFalse(store.videoFile("wmc-1").exists())
+    }
+
+    @Test
+    fun `adds videos to photos already on the TV`() {
+        val plain = photo("wmc-1")
+        publish(listOf(plain))
+        videoSyncer().sync(indexUrl())
+        publish(listOf(withVideo(plain)))
+        files["/index.json"] = files.getValue("/index.json") + " ".encodeToByteArray()
+        videoSyncer().sync(indexUrl())
+        assertTrue(store.videoFile("wmc-1").exists())
+    }
+
+    @Test
+    fun `keeps the photo when its video fails its checksum`() {
+        val item = withVideo(photo("wmc-1"))
+        files["/wmc-1.mp4"] = ByteArray(item.video!!.bytes.toInt())
+        publish(listOf(item))
+        val result = videoSyncer().sync(indexUrl())
+        assertEquals(1, result.corrupt)
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
+        assertFalse(store.videoFile("wmc-1").exists())
     }
 }

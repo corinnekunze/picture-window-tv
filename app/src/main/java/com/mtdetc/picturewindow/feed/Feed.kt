@@ -31,6 +31,14 @@ data class BatchManifest(
     val items: List<FeedItem>,
 )
 
+/** The photo as a one-frame 3840×2160 HEVC video; TVs draw apps at 1080p but play video at 4K. */
+@Serializable
+data class FeedVideo(
+    val url: String,
+    val bytes: Long,
+    val sha256: String,
+)
+
 @Serializable
 data class FeedItem(
     val id: String,
@@ -45,6 +53,7 @@ data class FeedItem(
     val bytes: Long,
     val sha256: String,
     val category: String,
+    val video: FeedVideo? = null,
 )
 
 class FeedFormatException(message: String) : Exception(message)
@@ -63,12 +72,21 @@ object FeedParser {
         return index
     }
 
-    /** Parses a batch manifest, dropping any item that doesn't meet the contract. */
+    /**
+     * Parses a batch manifest, dropping any item that doesn't meet the contract. A malformed video
+     * only loses the video: the photo itself is still fine.
+     */
     fun parseManifest(text: String): BatchManifest {
         val manifest = decode<BatchManifest>(text)
         requireSchema(manifest.schema)
-        return manifest.copy(items = manifest.items.filter(::isPublishable))
+        val items = manifest.items.filter(::isPublishable).map { item ->
+            if (item.video == null || isValidVideo(item.video)) item else item.copy(video = null)
+        }
+        return manifest.copy(items = items)
     }
+
+    private fun isValidVideo(video: FeedVideo): Boolean =
+        video.bytes > 0 && sha256Pattern.matches(video.sha256) && video.url.isNotBlank()
 
     fun isPublishable(item: FeedItem): Boolean =
         idPattern.matches(item.id) &&

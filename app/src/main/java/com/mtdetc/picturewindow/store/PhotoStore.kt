@@ -46,20 +46,28 @@ class PhotoStore(private val root: File) {
 
     fun partialFile(id: String) = File(photosDir, "$id.webp.part")
 
-    /** Ids and sizes of complete photos on disk. */
-    fun cachedPhotos(): Map<String, Long> =
+    /** The photo's 4K video, kept next to its image. */
+    fun videoFile(id: String) = File(photosDir, "$id.mp4")
+
+    fun videoPartialFile(id: String) = File(photosDir, "$id.mp4.part")
+
+    /** Ids of photos whose image is on disk. A video on its own doesn't count. */
+    fun cachedPhotos(): Set<String> =
         photosDir.listFiles { file -> file.name.endsWith(".webp") }.orEmpty()
-            .associate { file -> file.name.removeSuffix(".webp") to file.length() }
+            .map { file -> file.name.removeSuffix(".webp") }
+            .toSet()
+
+    /** Everything this app keeps in the photos directory, partial downloads included. */
+    fun bytesOnDisk(): Long = photosDir.listFiles().orEmpty().sumOf(File::length)
 
     fun deletePhoto(id: String) {
-        photoFile(id).delete()
-        partialFile(id).delete()
+        listOf(photoFile(id), partialFile(id), videoFile(id), videoPartialFile(id)).forEach(File::delete)
     }
 
     /** Partial downloads for photos the catalog no longer wants. */
     fun deleteStrayPartials(wantedIds: Set<String>) {
-        photosDir.listFiles { file -> file.name.endsWith(".webp.part") }.orEmpty()
-            .filter { file -> file.name.removeSuffix(".webp.part") !in wantedIds }
+        photosDir.listFiles { file -> file.name.endsWith(".part") }.orEmpty()
+            .filter { file -> file.name.substringBefore('.') !in wantedIds }
             .forEach(File::delete)
     }
 
