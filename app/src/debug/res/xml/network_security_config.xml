@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: allow a preview feed served over plain HTTP from a computer on the home
+     network. Release builds keep Android's default of HTTPS only. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.1.60</domain>
+    </domain-config>
+</network-security-config>
