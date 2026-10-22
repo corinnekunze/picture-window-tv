@@ -1,6 +1,7 @@
 package com.mtdetc.picturewindow.rotation
 
 import com.mtdetc.picturewindow.TestData.entry
+import com.mtdetc.picturewindow.store.CatalogEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -9,7 +10,10 @@ import kotlin.random.Random
 
 class RotationTest {
     private val interval = 300_000L
-    private val rotation = Rotation(interval, Random(42))
+    private val rotation = Rotation(Random(42))
+
+    private fun Rotation.advanceIfDue(state: RotationState, available: List<CatalogEntry>, now: Long) =
+        advanceIfDue(state, available, now, interval)
 
     @Test
     fun `keeps the current photo until the interval passes`() {

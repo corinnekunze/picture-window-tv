@@ -13,21 +13,21 @@ data class RotationState(
 )
 
 /**
- * Picks the photo on screen. It changes every [intervalMs], never repeats back to back, prefers
+ * Picks the photo on screen. It changes every `intervalMs`, never repeats back to back, prefers
  * photos never shown (newest batch first, random within it), and otherwise picks among the photos
  * shown longest ago.
  */
-class Rotation(private val intervalMs: Long, private val random: Random = Random.Default) {
+class Rotation(private val random: Random = Random.Default) {
 
     /** [available] is the photos on disk, in catalog order. */
-    fun advanceIfDue(state: RotationState, available: List<CatalogEntry>, now: Long): RotationState {
+    fun advanceIfDue(state: RotationState, available: List<CatalogEntry>, now: Long, intervalMs: Long): RotationState {
         if (available.isEmpty()) return state
-        if (isCurrentStillValid(state, available, now)) return state
+        if (isCurrentStillValid(state, available, now, intervalMs)) return state
         val next = pickNext(state, available)
         return RotationState(next.item.id, now, state.lastShown + (next.item.id to now))
     }
 
-    private fun isCurrentStillValid(state: RotationState, available: List<CatalogEntry>, now: Long): Boolean {
+    private fun isCurrentStillValid(state: RotationState, available: List<CatalogEntry>, now: Long, intervalMs: Long): Boolean {
         val currentId = state.currentId ?: return false
         if (available.none { entry -> entry.item.id == currentId }) return false
         // A clock that jumped backwards counts as due, so a bad clock can't freeze the rotation.

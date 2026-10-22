@@ -5,6 +5,7 @@ import android.content.Context
 import com.mtdetc.picturewindow.feed.FeedClient
 import com.mtdetc.picturewindow.rotation.PhotoLibrary
 import com.mtdetc.picturewindow.rotation.Rotation
+import com.mtdetc.picturewindow.settings.AppSettings
 import com.mtdetc.picturewindow.store.PhotoStore
 import com.mtdetc.picturewindow.sync.SyncScheduler
 import com.mtdetc.picturewindow.sync.Syncer
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit
 
 class PictureWindowApp : Application() {
     val store by lazy { PhotoStore(filesDir) }
-    val library by lazy { PhotoLibrary(store, Rotation(Config.ROTATION_INTERVAL_MS), Config.ROTATION_INTERVAL_MS) }
+    val library by lazy { PhotoLibrary(store, Rotation(), intervalMs = { AppSettings(this).rotationIntervalMs }) }
     val syncer by lazy { Syncer(store, FeedClient(httpClient()), ::cacheBudgetBytes) }
 
     override fun onCreate() {

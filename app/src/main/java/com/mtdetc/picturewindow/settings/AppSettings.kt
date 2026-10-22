@@ -15,8 +15,16 @@ class AppSettings(context: Context) {
         get() = preferences.getBoolean(KEY_SHOW_CLOCK, true)
         set(value) = preferences.edit().putBoolean(KEY_SHOW_CLOCK, value).apply()
 
+    /** Not on the settings screen; debug builds can shorten it for testing (see DebugReceiver). */
+    var rotationIntervalMs: Long
+        get() = preferences.getLong(KEY_ROTATION_INTERVAL_MS, Config.ROTATION_INTERVAL_MS)
+        set(value) = preferences.edit().putLong(KEY_ROTATION_INTERVAL_MS, value).apply()
+
+    fun resetRotationInterval() = preferences.edit().remove(KEY_ROTATION_INTERVAL_MS).apply()
+
     private companion object {
         const val KEY_FEED_URL = "feed_url"
         const val KEY_SHOW_CLOCK = "show_clock"
+        const val KEY_ROTATION_INTERVAL_MS = "rotation_interval_ms"
     }
 }

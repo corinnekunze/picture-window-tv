@@ -18,8 +18,8 @@ import kotlin.random.Random
 
 /**
  * The photo screensaver: the current photo full screen, crossfading when the rotation moves on, with
- * the clock and date in the bottom-left corner and "Photo by …" in the bottom-right. Both drift every minute
- * against burn-in. It checks the rotation on the same tick, so a revoked photo goes within a minute.
+ * the clock and date in the bottom-left corner and "Photo by …" in the bottom-right. Both move a little
+ * every minute against burn-in, but only while faded out, so they never visibly slide. It checks the rotation on the same tick, so a revoked photo goes within a minute.
  */
 class PhotoDreamService : DreamService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -33,11 +33,14 @@ class PhotoDreamService : DreamService() {
 
     private val tick = object : Runnable {
         override fun run() {
-            drift()
+            relocateText()
             refreshPhoto()
             handler.postDelayed(this, Config.DRIFT_INTERVAL_MS)
         }
     }
+
+    /** Wakes exactly when the rotation is due, so a change never waits for the next drift tick. */
+    private val photoDue = Runnable { refreshPhoto() }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -81,11 +84,18 @@ class PhotoDreamService : DreamService() {
                 handler.post { showWaiting() }
                 return@execute
             }
+            scheduleNextPhoto(current)
             if (current.item.id == shownId) return@execute
             val metrics = resources.displayMetrics
             val bitmap = PhotoDecoder.decode(current.file, metrics.widthPixels, metrics.heightPixels) ?: return@execute
             handler.post { crossfadeTo(current, bitmap) }
         }
+    }
+
+    private fun scheduleNextPhoto(current: CurrentPhoto) {
+        val delayMs = (current.nextChangeAt - System.currentTimeMillis()).coerceAtLeast(0) + DUE_SLACK_MS
+        handler.removeCallbacks(photoDue)
+        handler.postDelayed(photoDue, delayMs)
     }
 
     private fun showWaiting() {
@@ -109,10 +119,7 @@ class PhotoDreamService : DreamService() {
             outgoingBitmap?.recycle()
         }.start()
         outgoingImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).start()
-        credit.animate().alpha(0f).setDuration(Config.CROSSFADE_MS / 2).withEndAction {
-            credit.text = getString(R.string.photo_by, photo.item.author)
-            credit.animate().alpha(1f).setDuration(Config.CROSSFADE_MS / 2).start()
-        }.start()
+        relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
         frontImage = backImage
         backImage = outgoingImage
         frontImage.bringToFront()
@@ -120,17 +127,31 @@ class PhotoDreamService : DreamService() {
         credit.bringToFront()
     }
 
-    /** Moves the clock and the credit to a new spot inside their corners. */
-    private fun drift() {
+    /**
+     * Fades the clock and credit out, moves them to a new spot inside their corners (and swaps in a new
+     * credit if given), then fades them back in.
+     */
+    private fun relocateText(newCredit: String? = null) {
+        credit.animate().alpha(0f).setDuration(TEXT_FADE_MS).start()
+        clock.animate().alpha(0f).setDuration(TEXT_FADE_MS).withEndAction {
+            moveText()
+            if (newCredit != null) credit.text = newCredit
+            clock.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
+            credit.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
+        }.start()
+    }
+
+    private fun moveText() {
         val range = DRIFT_RANGE_DP * resources.displayMetrics.density
-        clock.animate().translationX(Random.nextFloat() * range).translationY(-Random.nextFloat() * range)
-            .setDuration(DRIFT_ANIMATION_MS).start()
-        credit.animate().translationX(-Random.nextFloat() * range).translationY(-Random.nextFloat() * range)
-            .setDuration(DRIFT_ANIMATION_MS).start()
+        clock.translationX = Random.nextFloat() * range
+        clock.translationY = -Random.nextFloat() * range
+        credit.translationX = -Random.nextFloat() * range
+        credit.translationY = -Random.nextFloat() * range
     }
 
     private companion object {
         const val DRIFT_RANGE_DP = 48f
-        const val DRIFT_ANIMATION_MS = 3_000L
+        const val TEXT_FADE_MS = 600L
+        const val DUE_SLACK_MS = 250L
     }
 }

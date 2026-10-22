@@ -13,18 +13,19 @@ data class CurrentPhoto(val item: FeedItem, val file: File, val since: Long, val
 class PhotoLibrary(
     private val store: PhotoStore,
     private val rotation: Rotation,
-    private val intervalMs: Long,
+    private val intervalMs: () -> Long,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun current(): CurrentPhoto? = synchronized(store.lock) {
         val cachedIds = store.cachedPhotos().keys
         val available = store.readCatalog().entries.filter { entry -> entry.item.id in cachedIds }
         val previous = store.readRotation()
-        val state = rotation.advanceIfDue(previous, available, clock())
+        val interval = intervalMs()
+        val state = rotation.advanceIfDue(previous, available, clock(), interval)
         if (state != previous) store.writeRotation(state)
 
         val entry = available.firstOrNull { candidate -> candidate.item.id == state.currentId } ?: return null
-        CurrentPhoto(entry.item, store.photoFile(entry.item.id), state.currentSince, state.currentSince + intervalMs)
+        CurrentPhoto(entry.item, store.photoFile(entry.item.id), state.currentSince, state.currentSince + interval)
     }
 
     /** Looks up any cached photo by id, so a reader can open the exact photo it queried. */
