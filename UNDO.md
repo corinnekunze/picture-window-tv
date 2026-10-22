@@ -15,7 +15,8 @@ TV_HOST=192.168.1.50 scripts/restore-tv.sh           # put the TV back
 
 Restore re-enables anything disabled since the backup, gives Home back to the recorded launcher,
 puts back the screensaver and sleep settings, and uninstalls Picture Window and the CleanYourTV
-launcher if they weren't there before. Wake the TV first: adb can't reach it in standby.
+launcher if they weren't there before. Uninstalling also deletes the downloaded photos and the TCL
+`APP_AUTO_START` permission. Wake the TV first: adb can't reach it in standby.
 
 ## From the remote (no computer)
 
