@@ -4,7 +4,13 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@android:color/transparent">
+
+    <!-- PROTOTYPE: the 4K video layer, behind the window; transparent image views show it. -->
+    <SurfaceView
+        android:id="@+id/photo_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <ImageView
         android:id="@+id/photo_back"

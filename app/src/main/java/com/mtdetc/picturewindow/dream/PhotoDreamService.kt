@@ -1,6 +1,9 @@
 package com.mtdetc.picturewindow.dream
 
 import android.graphics.Bitmap
+import android.media.MediaPlayer
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.os.Handler
 import android.os.Looper
 import android.service.dreams.DreamService
@@ -12,6 +15,7 @@ import com.mtdetc.picturewindow.R
 import com.mtdetc.picturewindow.rotation.CurrentPhoto
 import com.mtdetc.picturewindow.settings.AppSettings
 import com.mtdetc.picturewindow.sync.SyncScheduler
+import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.random.Random
@@ -19,7 +23,11 @@ import kotlin.random.Random
 /**
  * The photo screensaver: the current photo full screen, crossfading when the rotation moves on, with
  * the clock and date in the bottom-left corner and "Photo by …" in the bottom-right. Both move a little
- * every minute against burn-in, but only while faded out, so they never visibly slide. It checks the rotation on the same tick, so a revoked photo goes within a minute.
+ * every minute against burn-in, but only while faded out, so they never visibly slide. It checks the
+ * rotation on the same tick, so a revoked photo goes within a minute.
+ *
+ * PROTOTYPE (branch prototype/4k-video): when files/videos/<id>.mp4 exists, the photo plays as a 4K
+ * video on the TV's video layer, which reaches the panel at full resolution; the text stays on top.
  */
 class PhotoDreamService : DreamService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -30,6 +38,10 @@ class PhotoDreamService : DreamService() {
     private lateinit var credit: ShadowTextView
     @Volatile private var shownId: String? = null
     private var shownBitmap: Bitmap? = null
+    private lateinit var videoView: SurfaceView
+    private var videoPlayer: MediaPlayer? = null
+    private var videoSurfaceReady = false
+    private var pendingVideo: File? = null
 
     private val tick = object : Runnable {
         override fun run() {
@@ -51,6 +63,8 @@ class PhotoDreamService : DreamService() {
         backImage = findViewById(R.id.photo_back)
         clock = findViewById(R.id.clock)
         credit = findViewById(R.id.credit)
+        videoView = findViewById(R.id.photo_video)
+        videoView.holder.addCallback(videoSurfaceCallback)
         clock.visibility = if (AppSettings(this).showClock) View.VISIBLE else View.GONE
     }
 
@@ -69,6 +83,7 @@ class PhotoDreamService : DreamService() {
     }
 
     override fun onDetachedFromWindow() {
+        releaseVideo()
         frontImage.setImageDrawable(null)
         backImage.setImageDrawable(null)
         shownBitmap?.recycle()
@@ -86,10 +101,53 @@ class PhotoDreamService : DreamService() {
             }
             scheduleNextPhoto(current)
             if (current.item.id == shownId) return@execute
+            val video = File(filesDir, "videos/${current.item.id}.mp4")
+            if (video.exists()) {
+                handler.post { showVideo(current, video) }
+                return@execute
+            }
             val metrics = resources.displayMetrics
             val bitmap = PhotoDecoder.decode(current.file, metrics.widthPixels, metrics.heightPixels) ?: return@execute
             handler.post { crossfadeTo(current, bitmap) }
         }
+    }
+
+    private val videoSurfaceCallback = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            videoSurfaceReady = true
+            pendingVideo?.let(::playVideo)
+            pendingVideo = null
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            videoSurfaceReady = false
+            releaseVideo()
+        }
+    }
+
+    private fun showVideo(photo: CurrentPhoto, video: File) {
+        shownId = photo.item.id
+        frontImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).start()
+        backImage.alpha = 0f
+        relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
+        if (videoSurfaceReady) playVideo(video) else pendingVideo = video
+    }
+
+    private fun playVideo(video: File) {
+        releaseVideo()
+        videoPlayer = MediaPlayer().apply {
+            setDataSource(video.path)
+            setDisplay(videoView.holder)
+            setOnPreparedListener { player -> player.start() }
+            prepareAsync()
+        }
+    }
+
+    private fun releaseVideo() {
+        videoPlayer?.release()
+        videoPlayer = null
     }
 
     private fun scheduleNextPhoto(current: CurrentPhoto) {
