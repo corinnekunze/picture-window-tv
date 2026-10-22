@@ -54,6 +54,10 @@ data class FeedItem(
     val sha256: String,
     val category: String,
     val video: FeedVideo? = null,
+    /** The short name to show ("Photo by …"); absent when the feed found no clean one. */
+    val credit: String? = null,
+    /** Roughly where it was taken, e.g. "Zug, Switzerland". */
+    val place: String? = null,
 )
 
 class FeedFormatException(message: String) : Exception(message)

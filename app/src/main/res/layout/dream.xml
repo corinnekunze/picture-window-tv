@@ -70,18 +70,41 @@
             android:textSize="@dimen/date_text" />
     </LinearLayout>
 
-    <com.mtdetc.picturewindow.dream.ShadowTextView
-        android:id="@+id/credit"
+    <!-- "Photo by …" (up to two lines for long observatory credits) with the place under it. -->
+    <LinearLayout
+        android:id="@+id/caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="@dimen/overlay_margin"
         android:layout_marginBottom="@dimen/credit_margin_bottom"
-        android:ellipsize="end"
-        android:fontFamily="@font/outfit_regular"
         android:gravity="end"
-        android:maxWidth="@dimen/credit_max_width"
-        android:singleLine="true"
-        android:textColor="@color/overlay_text"
-        android:textSize="@dimen/credit_text" />
+        android:orientation="vertical">
+
+        <com.mtdetc.picturewindow.dream.ShadowTextView
+            android:id="@+id/credit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit_regular"
+            android:gravity="end"
+            android:maxLines="2"
+            android:maxWidth="@dimen/credit_max_width"
+            android:textColor="@color/overlay_text"
+            android:textSize="@dimen/credit_text" />
+
+        <com.mtdetc.picturewindow.dream.ShadowTextView
+            android:id="@+id/place"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/place_gap"
+            android:fontFamily="@font/outfit_regular"
+            android:letterSpacing="0.08"
+            android:maxWidth="@dimen/credit_max_width"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/overlay_text_soft"
+            android:textSize="@dimen/place_text"
+            android:visibility="gone" />
+    </LinearLayout>
 </FrameLayout>

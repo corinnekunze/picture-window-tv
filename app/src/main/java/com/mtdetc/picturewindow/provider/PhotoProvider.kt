@@ -43,6 +43,8 @@ class PhotoProvider : ContentProvider() {
                 photoUri(current.item.id).toString(),
                 current.since,
                 current.nextChangeAt,
+                current.item.credit,
+                current.item.place,
             ),
         )
         return cursor
@@ -74,6 +76,8 @@ class PhotoProvider : ContentProvider() {
     companion object {
         val COLUMNS = arrayOf(
             "id", "title", "author", "license", "source_url", "image_uri", "since", "next_change_at",
+            // Added later, so earlier readers' column positions still hold. Either may be null.
+            "credit", "place",
         )
         val CURRENT_URI: Uri = Uri.parse("content://${Config.PROVIDER_AUTHORITY}/current")
 

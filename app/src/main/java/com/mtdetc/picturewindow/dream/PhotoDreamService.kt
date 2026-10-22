@@ -35,7 +35,9 @@ class PhotoDreamService : DreamService() {
     private lateinit var backImage: ImageView
     private lateinit var veil: View
     private lateinit var clock: View
+    private lateinit var caption: View
     private lateinit var credit: ShadowTextView
+    private lateinit var place: ShadowTextView
     private lateinit var videoLayer: VideoLayer
     @Volatile private var shownId: String? = null
     private var shownBitmap: Bitmap? = null
@@ -62,7 +64,9 @@ class PhotoDreamService : DreamService() {
         backImage = findViewById(R.id.photo_back)
         veil = findViewById(R.id.veil)
         clock = findViewById(R.id.clock)
+        caption = findViewById(R.id.caption)
         credit = findViewById(R.id.credit)
+        place = findViewById(R.id.place)
         videoLayer = VideoLayer(findViewById(R.id.photo_video), handler)
         clock.visibility = if (AppSettings(this).showClock) View.VISIBLE else View.GONE
     }
@@ -134,7 +138,7 @@ class PhotoDreamService : DreamService() {
     private fun fadeToVideo(photo: CurrentPhoto) {
         if (decoder == null) return
         shownId = photo.item.id
-        relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
+        relocateText(newCaption = photo)
         veil.animate().alpha(1f).setDuration(Config.CROSSFADE_MS / 2).withEndAction {
             clearImages()
             showingVideo = true
@@ -182,7 +186,7 @@ class PhotoDreamService : DreamService() {
             outgoingImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).withEndAction(afterFade).start()
         }
         veil.animate().alpha(0f).setDuration(Config.CROSSFADE_MS / 2).start()
-        relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
+        relocateText(newCaption = photo)
         frontImage = incomingImage
         backImage = outgoingImage
     }
@@ -210,25 +214,37 @@ class PhotoDreamService : DreamService() {
     }
 
     /**
-     * Fades the clock and credit out, moves them to a new spot inside their corners (and swaps in a new
-     * credit if given), then fades them back in.
+     * Fades the clock and caption out, moves them to a new spot inside their corners (and swaps in the
+     * new photo's credit and place if given), then fades them back in.
      */
-    private fun relocateText(newCredit: String? = null) {
-        credit.animate().alpha(0f).setDuration(TEXT_FADE_MS).start()
+    private fun relocateText(newCaption: CurrentPhoto? = null) {
+        caption.animate().alpha(0f).setDuration(TEXT_FADE_MS).start()
         clock.animate().alpha(0f).setDuration(TEXT_FADE_MS).withEndAction {
             moveText()
-            if (newCredit != null) credit.text = newCredit
+            if (newCaption != null) showCaption(newCaption)
             clock.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
-            credit.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
+            caption.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
         }.start()
+    }
+
+    /**
+     * Only the feed's cleaned credit is shown, never the raw author: when the feed withholds a credit
+     * (too long, or flagged), the raw text is exactly what it kept off screen.
+     */
+    private fun showCaption(photo: CurrentPhoto) {
+        val photoCredit = photo.item.credit
+        credit.text = if (photoCredit != null) getString(R.string.photo_by, photoCredit) else ""
+        credit.visibility = if (photoCredit != null) View.VISIBLE else View.GONE
+        place.text = photo.item.place.orEmpty()
+        place.visibility = if (photo.item.place != null) View.VISIBLE else View.GONE
     }
 
     private fun moveText() {
         val range = DRIFT_RANGE_DP * resources.displayMetrics.density
         clock.translationX = Random.nextFloat() * range
         clock.translationY = -Random.nextFloat() * range
-        credit.translationX = -Random.nextFloat() * range
-        credit.translationY = -Random.nextFloat() * range
+        caption.translationX = -Random.nextFloat() * range
+        caption.translationY = -Random.nextFloat() * range
     }
 
     private companion object {
