@@ -18,7 +18,7 @@ import kotlin.random.Random
 
 /**
  * The photo screensaver: the current photo full screen, crossfading when the rotation moves on, with
- * a clock in the top-right corner and "Photo by …" in the bottom-left. Both drift every minute
+ * the clock and date in the bottom-left corner and "Photo by …" in the bottom-right. Both drift every minute
  * against burn-in. It checks the rotation on the same tick, so a revoked photo goes within a minute.
  */
 class PhotoDreamService : DreamService() {
@@ -123,9 +123,9 @@ class PhotoDreamService : DreamService() {
     /** Moves the clock and the credit to a new spot inside their corners. */
     private fun drift() {
         val range = DRIFT_RANGE_DP * resources.displayMetrics.density
-        clock.animate().translationX(-Random.nextFloat() * range).translationY(Random.nextFloat() * range)
+        clock.animate().translationX(Random.nextFloat() * range).translationY(-Random.nextFloat() * range)
             .setDuration(DRIFT_ANIMATION_MS).start()
-        credit.animate().translationX(Random.nextFloat() * range).translationY(-Random.nextFloat() * range)
+        credit.animate().translationX(-Random.nextFloat() * range).translationY(-Random.nextFloat() * range)
             .setDuration(DRIFT_ANIMATION_MS).start()
     }
 

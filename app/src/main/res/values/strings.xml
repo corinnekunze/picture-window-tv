@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Picture Window</string>
     <string name="dream_label">Picture Window</string>
+    <!-- The same pattern as CleanYourTV's home and clock screensaver. -->
+    <string name="date_format" translatable="false">EEEE  d MMMM</string>
     <string name="photo_by">Photo by %1$s</string>
     <string name="dream_waiting">Picture Window is downloading photos…</string>
     <string name="feed_url_label">Feed URL</string>

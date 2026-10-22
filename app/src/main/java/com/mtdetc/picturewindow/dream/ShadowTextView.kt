@@ -9,22 +9,25 @@ import android.widget.TextClock
 import android.widget.TextView
 
 /**
- * White text that reads on fog, snow and cloud without a box: a soft dark glow drawn first, then the
- * text again with a tight dark edge. The paint's shadow is set directly so drawing doesn't
- * invalidate the view again.
+ * White text that reads on fog, snow and cloud without a box. The mockup's four shadows, drawn as four
+ * passes from the softest glow to the tightest edge (Android paints one shadow per pass). The paint's
+ * shadow is set directly so drawing doesn't invalidate the view again.
  */
 private object TextShadows {
-    private const val GLOW_RADIUS_DP = 12f
-    private const val EDGE_RADIUS_DP = 2f
-    private const val EDGE_OFFSET_DP = 1f
-    private val glowColor = Color.argb(150, 0, 0, 0)
-    private val edgeColor = Color.argb(220, 0, 0, 0)
+    private class Layer(val radiusDp: Float, val offsetYDp: Float, val alpha: Int)
+
+    private val layers = listOf(
+        Layer(radiusDp = 22f, offsetYDp = 0f, alpha = 89),
+        Layer(radiusDp = 8f, offsetYDp = 0f, alpha = 128),
+        Layer(radiusDp = 2f, offsetYDp = 1f, alpha = 166),
+        Layer(radiusDp = 1f, offsetYDp = 0f, alpha = 191),
+    )
 
     fun draw(paint: TextPaint, density: Float, drawText: () -> Unit) {
-        paint.setShadowLayer(GLOW_RADIUS_DP * density, 0f, 0f, glowColor)
-        drawText()
-        paint.setShadowLayer(EDGE_RADIUS_DP * density, 0f, EDGE_OFFSET_DP * density, edgeColor)
-        drawText()
+        for (layer in layers) {
+            paint.setShadowLayer(layer.radiusDp * density, 0f, layer.offsetYDp * density, Color.argb(layer.alpha, 0, 0, 0))
+            drawText()
+        }
     }
 }
 

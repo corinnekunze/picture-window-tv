@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Matches the mockup and CleanYourTV's own Clock screensaver: Outfit, a thin clock with the date
+     under it bottom-left, the photographer's name bottom-right. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -19,30 +21,52 @@
         android:importantForAccessibility="no"
         android:scaleType="centerCrop" />
 
-    <com.mtdetc.picturewindow.dream.ShadowTextClock
+    <LinearLayout
         android:id="@+id/clock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="@dimen/overlay_margin"
-        android:layout_marginEnd="@dimen/overlay_margin"
-        android:fontFamily="sans-serif-light"
-        android:format12Hour="h:mm"
-        android:format24Hour="HH:mm"
-        android:textColor="@android:color/white"
-        android:textSize="@dimen/clock_text" />
-
-    <com.mtdetc.picturewindow.dream.ShadowTextView
-        android:id="@+id/credit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="@dimen/overlay_margin"
         android:layout_marginBottom="@dimen/overlay_margin"
-        android:fontFamily="sans-serif"
+        android:orientation="vertical">
+
+        <com.mtdetc.picturewindow.dream.ShadowTextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/outfit_extralight"
+            android:format12Hour="h:mm"
+            android:format24Hour="HH:mm"
+            android:includeFontPadding="false"
+            android:letterSpacing="-0.04"
+            android:textColor="@color/overlay_text"
+            android:textSize="@dimen/clock_text" />
+
+        <com.mtdetc.picturewindow.dream.ShadowTextClock
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/date_indent"
+            android:layout_marginTop="@dimen/date_gap"
+            android:fontFamily="@font/outfit_regular"
+            android:format12Hour="@string/date_format"
+            android:format24Hour="@string/date_format"
+            android:letterSpacing="0.14"
+            android:textAllCaps="true"
+            android:textColor="@color/overlay_text"
+            android:textSize="@dimen/date_text" />
+    </LinearLayout>
+
+    <com.mtdetc.picturewindow.dream.ShadowTextView
+        android:id="@+id/credit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="@dimen/overlay_margin"
+        android:layout_marginBottom="@dimen/credit_margin_bottom"
+        android:ellipsize="end"
+        android:fontFamily="@font/outfit_regular"
+        android:gravity="end"
         android:maxWidth="@dimen/credit_max_width"
         android:singleLine="true"
-        android:ellipsize="end"
-        android:textColor="@android:color/white"
+        android:textColor="@color/overlay_text"
         android:textSize="@dimen/credit_text" />
 </FrameLayout>

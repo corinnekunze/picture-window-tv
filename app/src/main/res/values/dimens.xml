@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Sizes from the mockup, which measures in percent of the screen width (1% ≈ 9.6dp on a TV). -->
 <resources>
-    <dimen name="overlay_margin">48dp</dimen>
-    <dimen name="clock_text">56sp</dimen>
-    <dimen name="credit_text">18sp</dimen>
-    <dimen name="credit_max_width">560dp</dimen>
+    <dimen name="overlay_margin">43dp</dimen>
+    <dimen name="credit_margin_bottom">44dp</dimen>
+    <dimen name="clock_text">58sp</dimen>
+    <dimen name="date_text">13sp</dimen>
+    <dimen name="date_indent">3dp</dimen>
+    <dimen name="date_gap">10dp</dimen>
+    <dimen name="credit_text">13sp</dimen>
+    <dimen name="credit_max_width">384dp</dimen>
 </resources>
