@@ -1,6 +1,7 @@
 package com.mtdetc.picturewindow.dream
 
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.media.MediaPlayer
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -103,7 +104,13 @@ class PhotoDreamService : DreamService() {
             if (current.item.id == shownId) return@execute
             val video = File(filesDir, "videos/${current.item.id}.mp4")
             if (video.exists()) {
-                handler.post { showVideo(current, video) }
+                val metrics = resources.displayMetrics
+                val splitImage = if (AppSettings(this).splitCompare) {
+                    PhotoDecoder.decode(current.file, metrics.widthPixels, metrics.heightPixels)
+                } else {
+                    null
+                }
+                handler.post { showVideo(current, video, splitImage) }
                 return@execute
             }
             val metrics = resources.displayMetrics
@@ -127,12 +134,27 @@ class PhotoDreamService : DreamService() {
         }
     }
 
-    private fun showVideo(photo: CurrentPhoto, video: File) {
+    private fun showVideo(photo: CurrentPhoto, video: File, splitImage: Bitmap?) {
         shownId = photo.item.id
-        frontImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).start()
         backImage.alpha = 0f
+        showSplit(splitImage)
         relocateText(newCredit = getString(R.string.photo_by, photo.item.author))
         if (videoSurfaceReady) playVideo(video) else pendingVideo = video
+    }
+
+    /** With a split image, the left half shows the 1080p image over the right half's 4K video. */
+    private fun showSplit(splitImage: Bitmap?) {
+        val labels = listOf<View>(findViewById(R.id.label_1080p), findViewById(R.id.label_4k), findViewById(R.id.split_divider))
+        if (splitImage == null) {
+            frontImage.animate().alpha(0f).setDuration(Config.CROSSFADE_MS).start()
+            labels.forEach { view -> view.visibility = View.GONE }
+            return
+        }
+        frontImage.animate().cancel()
+        frontImage.setImageBitmap(splitImage)
+        frontImage.alpha = 1f
+        frontImage.clipBounds = Rect(0, 0, frontImage.width / 2, frontImage.height)
+        labels.forEach { view -> view.visibility = View.VISIBLE }
     }
 
     private fun playVideo(video: File) {

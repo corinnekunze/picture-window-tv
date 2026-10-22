@@ -20,11 +20,17 @@ class AppSettings(context: Context) {
         get() = preferences.getLong(KEY_ROTATION_INTERVAL_MS, Config.ROTATION_INTERVAL_MS)
         set(value) = preferences.edit().putLong(KEY_ROTATION_INTERVAL_MS, value).apply()
 
+    /** PROTOTYPE: debug builds can show the 1080p image and the 4K video side by side. */
+    var splitCompare: Boolean
+        get() = preferences.getBoolean(KEY_SPLIT_COMPARE, false)
+        set(value) = preferences.edit().putBoolean(KEY_SPLIT_COMPARE, value).apply()
+
     fun resetRotationInterval() = preferences.edit().remove(KEY_ROTATION_INTERVAL_MS).apply()
 
     private companion object {
         const val KEY_FEED_URL = "feed_url"
         const val KEY_SHOW_CLOCK = "show_clock"
         const val KEY_ROTATION_INTERVAL_MS = "rotation_interval_ms"
+        const val KEY_SPLIT_COMPARE = "split_compare"
     }
 }

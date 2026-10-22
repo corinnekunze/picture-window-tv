@@ -11,14 +11,18 @@ import com.mtdetc.picturewindow.settings.AppSettings
  *
  *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --el seconds 10
  *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --el seconds 0   # back to 5 minutes
+ *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --ez split true   # 1080p | 4K
  *
  * Only the shell (which holds DUMP) can send it.
  */
 class DebugReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val settings = AppSettings(context)
-        val seconds = intent.getLongExtra("seconds", 0)
-        if (seconds <= 0) settings.resetRotationInterval() else settings.rotationIntervalMs = seconds * 1000
-        Log.i("PictureWindowDebug", "Rotation interval now ${settings.rotationIntervalMs} ms")
+        if (intent.hasExtra("split")) settings.splitCompare = intent.getBooleanExtra("split", false)
+        if (intent.hasExtra("seconds")) {
+            val seconds = intent.getLongExtra("seconds", 0)
+            if (seconds <= 0) settings.resetRotationInterval() else settings.rotationIntervalMs = seconds * 1000
+        }
+        Log.i("PictureWindowDebug", "Rotation ${settings.rotationIntervalMs} ms, split ${settings.splitCompare}")
     }
 }

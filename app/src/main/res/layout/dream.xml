@@ -27,6 +27,41 @@
         android:importantForAccessibility="no"
         android:scaleType="centerCrop" />
 
+    <!-- PROTOTYPE: split comparison, debug only. -->
+    <View
+        android:id="@+id/split_divider"
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal"
+        android:background="#99FFFFFF"
+        android:visibility="gone" />
+
+    <com.mtdetc.picturewindow.dream.ShadowTextView
+        android:id="@+id/label_1080p"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="@dimen/overlay_margin"
+        android:fontFamily="@font/outfit_regular"
+        android:letterSpacing="0.14"
+        android:text="1080p"
+        android:textColor="@color/overlay_text"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
+    <com.mtdetc.picturewindow.dream.ShadowTextView
+        android:id="@+id/label_4k"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="@dimen/overlay_margin"
+        android:fontFamily="@font/outfit_regular"
+        android:letterSpacing="0.14"
+        android:text="4K"
+        android:textColor="@color/overlay_text"
+        android:textSize="20sp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/clock"
         android:layout_width="wrap_content"
