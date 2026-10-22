@@ -20,9 +20,10 @@ import kotlin.random.Random
 
 /**
  * The photo screensaver: the current photo full screen, with the clock and date in the bottom-left
- * corner and "Photo by …" in the bottom-right. The text moves a little every minute against burn-in,
- * but only while faded out, so it never visibly slides. It checks the rotation on the same tick, so a
- * revoked photo goes within a minute.
+ * corner and the caption in the bottom-right. The text moves to a new spot inside its corner with each
+ * new photo, while faded out, and stays still in between: five minutes in one place is far too short
+ * for burn-in, and moving more often made the text fade for no visible reason. The rotation is also
+ * rechecked every minute, so a revoked photo goes within a minute.
  *
  * Photos show as their 4K video when the TV has it (apps draw at 1080p; video reaches the panel at
  * full resolution), fading through black, and otherwise as the 1080p image, crossfading. A video that
@@ -47,13 +48,12 @@ class PhotoDreamService : DreamService() {
 
     private val tick = object : Runnable {
         override fun run() {
-            relocateText()
             refreshPhoto()
-            handler.postDelayed(this, Config.DRIFT_INTERVAL_MS)
+            handler.postDelayed(this, Config.CHECK_INTERVAL_MS)
         }
     }
 
-    /** Wakes exactly when the rotation is due, so a change never waits for the next drift tick. */
+    /** Wakes exactly when the rotation is due, so a change never waits for the next check. */
     private val photoDue = Runnable { refreshPhoto() }
 
     override fun onAttachedToWindow() {
@@ -216,14 +216,14 @@ class PhotoDreamService : DreamService() {
     }
 
     /**
-     * Fades the clock and caption out, moves them to a new spot inside their corners (and swaps in the
-     * new photo's credit and place if given), then fades them back in.
+     * Fades the clock and caption out, moves them to a new spot inside their corners and swaps in the
+     * new photo's caption, then fades them back in. Called only when the photo changes.
      */
-    private fun relocateText(newCaption: CurrentPhoto? = null) {
+    private fun relocateText(newCaption: CurrentPhoto) {
         caption.animate().alpha(0f).setDuration(TEXT_FADE_MS).start()
         clock.animate().alpha(0f).setDuration(TEXT_FADE_MS).withEndAction {
             moveText()
-            if (newCaption != null) showCaption(newCaption)
+            showCaption(newCaption)
             clock.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
             caption.animate().alpha(1f).setDuration(TEXT_FADE_MS).start()
         }.start()
