@@ -21,7 +21,7 @@ import kotlin.random.Random
 /**
  * The photo screensaver: the current photo full screen, with the clock and date in the bottom-left
  * corner and the caption in the bottom-right. The text moves to a new spot inside its corner with each
- * new photo, while faded out, and stays still in between: five minutes in one place is far too short
+ * new photo, while faded out, and stays still in between: three minutes in one place is far too short
  * for burn-in, and moving more often made the text fade for no visible reason. The rotation is also
  * rechecked every minute, so a revoked photo goes within a minute.
  *

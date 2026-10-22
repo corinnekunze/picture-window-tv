@@ -11,7 +11,7 @@ import com.mtdetc.picturewindow.settings.AppSettings
  * on a real TV:
  *
  *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --el seconds 10
- *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --el seconds 0   # back to 5 minutes
+ *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --el seconds 0   # back to the default (3 minutes)
  *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --es feed http://…/index.json
  *     adb shell am broadcast -n com.mtdetc.picturewindow/.DebugReceiver --es feed default
  *

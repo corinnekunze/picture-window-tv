@@ -15,7 +15,8 @@ object Config {
     /** Free space left on the TV's storage no matter what the budget allows. */
     const val MIN_FREE_BYTES = 2_000_000_000L
 
-    const val ROTATION_INTERVAL_MS = 5 * 60 * 1000L
+    /** How long each photo stays up; Google TV offers 5 s to 10 min, and 3 min leaves time to read the caption. */
+    const val ROTATION_INTERVAL_MS = 3 * 60 * 1000L
     /** How often the screensaver rechecks the rotation, so a revoked photo goes within a minute. */
     const val CHECK_INTERVAL_MS = 60 * 1000L
     const val CROSSFADE_MS = 2_000L
