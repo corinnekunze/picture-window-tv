@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
+
+// The release key never lives in the repo. scripts/release.sh points this at a properties file
+// (storeFile, storePassword, keyAlias, keyPassword); without one, release builds come out unsigned.
+val signingFile = providers.environmentVariable("PICTURE_WINDOW_SIGNING")
+    .orElse("${System.getProperty("user.home")}/.picture-window-tv/signing.properties")
+    .map(::file)
+    .get()
+val signing = Properties().apply { if (signingFile.exists()) signingFile.inputStream().use(::load) }
 
 android {
     namespace = "com.mtdetc.picturewindow"
@@ -12,13 +22,25 @@ android {
         applicationId = "com.mtdetc.picturewindow"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("pictureWindowVersionCode").get().toInt()
+        versionName = providers.gradleProperty("pictureWindowVersionName").get()
+    }
+
+    signingConfigs {
+        if (signingFile.exists()) {
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 # Put the TV back the way scripts/backup-tv.sh recorded it: re-enable anything disabled since, give
 # Home back to the recorded launcher, restore the screensaver and sleep settings, and uninstall the
-# apps this project added. Uses the newest backup unless BACKUP_DIR names one.
+# apps this project added. Uses this TV's first backup (by serial number) unless BACKUP_DIR names one.
 #
 # Usage: TV_HOST=192.168.1.50 scripts/restore-tv.sh [--dry-run]
 set -euo pipefail
-export ANDROID_SERIAL="${TV_HOST:?set TV_HOST to the IP address of the TV}:5555"
-BACKUP_ROOT="${BACKUP_ROOT:-$HOME/.picture-window-tv/backups}"
-BACKUP_DIR="${BACKUP_DIR:-$(ls -d "$BACKUP_ROOT"/*/ 2>/dev/null | sort | tail -1)}"
-BACKUP_DIR="${BACKUP_DIR%/}"
+source "$(dirname "$0")/tv-common.sh"
 # Apps this project may install. Each is removed only if the backup shows it wasn't there before.
 PROJECT_PACKAGES=(com.mtdetc.picturewindow com.gathin.tvhome)
 SECURE_KEYS=(screensaver_enabled screensaver_components screensaver_default_component
@@ -39,19 +36,13 @@ restore_setting() {
 }
 
 check_backup() {
+  BACKUP_DIR="${BACKUP_DIR:-$(first_backup_for_tv "$(tv_serial)")}"
+  BACKUP_DIR="${BACKUP_DIR%/}"
   if [ -z "$BACKUP_DIR" ] || [ ! -f "$BACKUP_DIR/home.txt" ]; then
-    echo "No backup found under $BACKUP_ROOT. Nothing to restore from." >&2
+    echo "No backup of this TV under $BACKUP_ROOT. Nothing to restore from." >&2
     exit 1
   fi
   echo "Restoring from $BACKUP_DIR"
-}
-
-connect() {
-  adb connect "$ANDROID_SERIAL" >/dev/null
-  if [ "$(adb get-state 2>/dev/null)" != "device" ]; then
-    echo "Can't reach the TV at $ANDROID_SERIAL. Wake it (standby drops adb) and allow debugging." >&2
-    exit 1
-  fi
 }
 
 reenable_packages() {
@@ -90,8 +81,8 @@ report() {
 }
 
 main() {
+  connect_tv
   check_backup
-  connect
   reenable_packages
   restore_home
   restore_screensaver

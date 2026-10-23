@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 # Record the TV's current state so scripts/restore-tv.sh can put it back: the Home activity, the
 # screensaver and sleep settings, and which packages are installed and disabled. Read-only on the TV.
+# Restore uses each TV's first backup (matched by serial number), so extra backups never hide it.
 #
 # Usage: TV_HOST=192.168.1.50 scripts/backup-tv.sh
 set -euo pipefail
-export ANDROID_SERIAL="${TV_HOST:?set TV_HOST to the IP address of the TV}:5555"
-BACKUP_ROOT="${BACKUP_ROOT:-$HOME/.picture-window-tv/backups}"
-
-adb connect "$ANDROID_SERIAL" >/dev/null
-if [ "$(adb get-state 2>/dev/null)" != "device" ]; then
-  echo "Can't reach the TV at $ANDROID_SERIAL. Wake it (standby drops adb) and allow debugging." >&2
-  exit 1
-fi
+source "$(dirname "$0")/tv-common.sh"
+connect_tv
 
 backup_dir="$BACKUP_ROOT/$(date +%Y%m%dT%H%M%S)"
 mkdir -p "$backup_dir"

@@ -6,6 +6,8 @@ order below goes from smallest to biggest change.
 ## From a computer (preferred)
 
 The backup is taken before the first change and kept in `~/.picture-window-tv/backups/`.
+`scripts/setup-tv.sh` takes it for you. Restore uses each TV's first backup (matched by serial
+number), so later backups never replace the state it goes back to.
 
 ```sh
 TV_HOST=192.168.1.50 scripts/backup-tv.sh            # once, before changing anything
