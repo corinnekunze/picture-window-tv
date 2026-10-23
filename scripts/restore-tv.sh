@@ -12,7 +12,8 @@ BACKUP_DIR="${BACKUP_DIR%/}"
 # Apps this project may install. Each is removed only if the backup shows it wasn't there before.
 PROJECT_PACKAGES=(com.mtdetc.picturewindow com.gathin.tvhome)
 SECURE_KEYS=(screensaver_enabled screensaver_components screensaver_default_component
-  screensaver_activate_on_sleep screensaver_activate_on_dock sleep_timeout)
+  screensaver_activate_on_sleep screensaver_activate_on_dock sleep_timeout
+  enabled_accessibility_services accessibility_enabled)
 SYSTEM_KEYS=(screen_off_timeout)
 DRY_RUN=false
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=true
