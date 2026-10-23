@@ -51,7 +51,9 @@ class Syncer(
         return try {
             refreshCatalog(feedUrl, previous.takeIf { state -> state.feedUrl == feedUrl }?.etag)
             val result = fillCache(shouldContinue)
-            store.writeSyncState(store.readSyncState().copy(lastAttemptAt = attemptAt, lastSuccessAt = clock(), lastMessage = result.message))
+            val state = store.readSyncState().copy(lastAttemptAt = attemptAt, lastMessage = result.message)
+            // A sync stopped partway isn't a success, so the TV still counts as stale and tries again.
+            store.writeSyncState(if (result.complete) state.copy(lastSuccessAt = clock()) else state)
             result
         } catch (error: Exception) {
             val message = "Sync failed: ${error.message ?: error.javaClass.simpleName}"

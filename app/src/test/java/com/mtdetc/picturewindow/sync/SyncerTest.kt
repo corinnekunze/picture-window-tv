@@ -148,4 +148,12 @@ class SyncerTest {
         assertEquals(setOf("wmc-1"), store.cachedPhotos())
         assertFalse(store.videoFile("wmc-1").exists())
     }
+
+    @Test
+    fun `a sync stopped partway is not recorded as a success`() {
+        publish(listOf(photo("a"), photo("b")))
+        val result = syncer.sync(indexUrl(), shouldContinue = { false })
+        assertFalse(result.complete)
+        assertEquals(0L, store.readSyncState().lastSuccessAt)
+    }
 }
