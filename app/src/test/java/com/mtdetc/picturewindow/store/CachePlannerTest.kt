@@ -67,4 +67,21 @@ class CachePlannerTest {
         val lastShown = mapOf("a" to 1L, "b" to 2L, "evicted" to 3L)
         assertEquals(emptyList<CacheStep>(), CachePlanner.plan(catalog, cached, lastShown, currentId = "a", budgetBytes = 200))
     }
+
+    @Test
+    fun `evicts down to the budget when a TV starts keeping videos`() {
+        val catalog = Catalog(listOf(entry("new1", "2026-10"), entry("new2", "2026-10"), entry("old1", "2026-09"), entry("shown", "2026-09")))
+        val cached = setOf("new1", "new2", "old1", "shown")
+        val lastShown = mapOf("shown" to 5L)
+        val steps = CachePlanner.plan(catalog, cached, lastShown, currentId = null, budgetBytes = 400) { item -> item.bytes * 2 }
+        assertEquals(listOf("shown", "old1"), evictions(steps))
+        assertEquals(emptyList<String>(), downloads(steps))
+    }
+
+    @Test
+    fun `keeps the photo on screen even when over the budget`() {
+        val catalog = Catalog(listOf(entry("a"), entry("current")))
+        val steps = CachePlanner.plan(catalog, setOf("a", "current"), emptyMap(), currentId = "current", budgetBytes = 100)
+        assertEquals(listOf("a"), evictions(steps))
+    }
 }

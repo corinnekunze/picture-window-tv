@@ -13,7 +13,9 @@ sealed interface CacheStep {
  * be the last to come round again). Photos already shown are only downloaded again into free space,
  * so a TV that has seen everything stops downloading until a new batch arrives.
  *
- * Sizes come from [sizeOf], so a TV that also keeps each photo's video budgets for both files.
+ * Sizes come from [sizeOf], so a TV that also keeps each photo's video budgets for both files. A TV
+ * already over the budget (it just started keeping videos, or the budget shrank) evicts down to it:
+ * shown photos first, most recently shown first, then unseen ones from the oldest batch.
  * Steps come in order: each eviction sits just before the download it makes room for, so a failed
  * download never costs more than the space it was given.
  */
@@ -51,8 +53,26 @@ object CachePlanner {
             steps += CacheStep.Download(item)
             usedBytes += sizeOf(item)
         }
+
+        val trimmable = ArrayDeque(evictable + unseenEvictionOrder(catalog, cachedIds, lastShown, currentId))
+        while (usedBytes > budgetBytes && trimmable.isNotEmpty()) {
+            val id = trimmable.removeFirst()
+            steps += CacheStep.Evict(id)
+            usedBytes -= sizeOf(itemsById.getValue(id))
+        }
         return steps
     }
+
+    /** Cached photos never shown, oldest batch first and last in each batch first. Never the one on screen. */
+    private fun unseenEvictionOrder(
+        catalog: Catalog,
+        cachedIds: Set<String>,
+        lastShown: Map<String, Long>,
+        currentId: String?,
+    ): List<String> =
+        catalog.entries.map { entry -> entry.item.id }
+            .filter { id -> id in cachedIds && id !in lastShown && id != currentId }
+            .reversed()
 
     /** Cached photos that may make room, most recently shown first. Never the one on screen. */
     private fun evictionOrder(
