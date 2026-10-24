@@ -15,6 +15,7 @@ MIN_SDK=26
 DRY_RUN=false
 REPLACE=false
 APK=""
+WAS_INSTALLED=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -68,6 +69,7 @@ back_up() {
 }
 
 install_app() {
+  if adb shell pm list packages | tr -d '\r' | grep -qx "package:$PACKAGE"; then WAS_INSTALLED=true; fi
   if [ "$REPLACE" = true ] && adb shell pm list packages | tr -d '\r' | grep -qx "package:$PACKAGE"; then
     run_on_tv shell pm uninstall "$PACKAGE"
   fi
@@ -104,8 +106,12 @@ set_screensaver() {
 report() {
   if [ "$DRY_RUN" = true ]; then echo "Dry run: nothing changed."; return; fi
   echo
-  echo "Done. Picture Window is downloading its photos (about 2 GB, a few minutes on fast Wi-Fi); until"
-  echo "then the screensaver shows the ones it has. To try it now:"
+  if [ "$WAS_INSTALLED" = true ] && [ "$REPLACE" = false ]; then
+    echo "Done. Picture Window was updated; its photos and settings stay. To try it now:"
+  else
+    echo "Done. Picture Window is downloading its photos (about 2 GB, a few minutes on fast Wi-Fi); until"
+    echo "then the screensaver shows the ones it has. To try it now:"
+  fi
   echo "  adb -s $ANDROID_SERIAL shell am start -n com.android.systemui/.Somnambulator"
   echo "To undo everything: TV_HOST=$TV_HOST scripts/restore-tv.sh   (add --dry-run to preview)"
   echo
