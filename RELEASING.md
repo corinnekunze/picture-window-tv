@@ -20,9 +20,7 @@ and nobody without the key can make an "update" that replaces it.
   - `~/.picture-window-tv/signing.properties`, which tells the build where the key is and its
     password. Gradle reads it (or the file named by `PICTURE_WINDOW_SIGNING`). Without it, release
     builds come out unsigned and `release.sh` refuses them.
-- **Backup:** a copy is kept in the maintainer's password manager, as a document item named
-  "Picture Window – Android release key" holding the `.jks` file, its password and the alias
-  (`picture-window`). The key password is the same as the keystore password.
+- **Backup:** a copy is kept in the maintainer's password manager that holds the .jks file and that password.
 - **New computer:** put the `.jks` back in `~/.picture-window-tv/keys/`, then recreate
   `~/.picture-window-tv/signing.properties` with `chmod 600` and these lines:
 
@@ -34,11 +32,37 @@ and nobody without the key can make an "update" that replaces it.
   ```
 
   Check it with `scripts/release.sh build`.
+
 - **If the key is lost**, TVs can't take updates any more: everyone has to uninstall Picture Window
   (which deletes its downloaded photos) and install a release signed with a new key. Make a new one
   with `scripts/release.sh init-key` only then, and say so in the release notes.
-- **If the key leaks**, someone could sign apps that install as Picture Window updates. Treat it
-  like a lost key: make a new one, publish with it, and tell people to reinstall.
+- **If the key leaks**, the risk is small: Picture Window has no update channel to hijack, and it
+  only asks for internet access. Someone with the key could sign a fake "update", but they'd still
+  have to talk a person into installing it by hand. Still, switch to a new key with Android's key
+  rotation: the old key vouches for the new one, and installed TVs (Android 9 and newer) take the
+  next release as a normal update, keeping their photos. Keep the old key; rotation needs it.
+
+  ```sh
+  BT="$(ls -d /opt/homebrew/share/android-commandlinetools/build-tools/* | sort -V | tail -1)"
+  KEYS=~/.picture-window-tv/keys
+  keytool -genkeypair -keystore $KEYS/picture-window-release-2.jks -alias picture-window-2 \
+    -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Picture Window, O=MTD etc."
+  # The proof that the old key hands over to the new one:
+  $BT/apksigner rotate --out $KEYS/rotation.lineage \
+    --old-signer --ks $KEYS/picture-window-release.jks --ks-key-alias picture-window \
+    --new-signer --ks $KEYS/picture-window-release-2.jks --ks-key-alias picture-window-2
+  # Every release from then on, after scripts/release.sh build:
+  $BT/apksigner sign --lineage $KEYS/rotation.lineage --rotation-min-sdk-version 28 \
+    --ks $KEYS/picture-window-release.jks --ks-key-alias picture-window \
+    --next-signer --ks $KEYS/picture-window-release-2.jks --ks-key-alias picture-window-2 \
+    dist/picture-window-<version>.apk
+  $BT/apksigner verify -v dist/picture-window-<version>.apk   # shows the v3 rotation
+  ```
+
+  `--rotation-min-sdk-version 28` makes Android 9 to 12 use the new key too; without it, only
+  Android 13 and newer do. Android 8 TVs keep trusting the old key. Back up the new key and
+  `rotation.lineage` the same way as the first key, and teach `release.sh` the sign step (its
+  `check_apk` looks for the first key's name).
 
 Debug builds (`./gradlew assembleDebug`) are signed with the Android SDK's own debug key, so a TV
 switching between a debug build and a release needs `scripts/setup-tv.sh --replace`.
