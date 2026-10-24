@@ -63,3 +63,8 @@ sync whenever the last successful one is more than a day old.
 ## Releasing
 
 See [RELEASING.md](RELEASING.md): building and publishing a release, and where the signing key lives.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The bundled Outfit font is under the SIL Open Font License
+([FONT-LICENSE-OFL.txt](FONT-LICENSE-OFL.txt)).
