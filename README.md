@@ -8,6 +8,10 @@ companion app that syncs the photo feed, and a photo screensaver.
 - Toolchain: JDK 17, Android SDK platform 35 and adb (Homebrew `android-commandlinetools` and
   `android-platform-tools`).
 
+**No ads, ever.** Picture Window will never show ads, sponsored photos or promotions, and will never
+be used to advertise to you: not on the screensaver, not on the home screen, not in a notification,
+not in any future version. Its only notification is the one telling you a new version is out.
+
 **Back up the TV before changing anything, and know how to undo it:** see [UNDO.md](UNDO.md).
 
 ## Install on a TV
@@ -58,8 +62,10 @@ so read CleanYourTV's notes for your TV first.
 
 ## Privacy and security
 
+- **No ads or tracking:** see the promise at the top. There's no advertising code, no analytics and
+  nothing that profiles what you watch, and there never will be.
 - **What the app can do:** it asks only for internet access (to download photos) and to be told about
-  a reboot (so its daily check stays scheduled). No account, microphone, location, analytics or ads, and it
+  a reboot (so its daily check stays scheduled). No account, microphone or location, and it
   can't see your other apps.
 - **What it sends:** once a day it asks GitHub whether the photo list changed. Like any web request,
   that shows GitHub your home's public IP address and the app's name and version. Nothing else about
