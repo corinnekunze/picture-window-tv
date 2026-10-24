@@ -6,6 +6,8 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 /** One feed photo and the batch it came from. Batch ids are "YYYY-MM", so they sort by age. */
 @Serializable
@@ -26,8 +28,8 @@ data class SyncState(
 
 /**
  * Files under the app's private directory: the photos, plus small JSON files for the catalog, the
- * rotation and the last sync. JSON writes go through a temp file and a rename so a power cut never
- * leaves half a file.
+ * rotation and the last sync. JSON writes go to a temp file that's synced to storage before it's
+ * renamed into place, so a power cut leaves either the old file or the new one, never an empty one.
  */
 class PhotoStore(private val root: File) {
     /** Held while reading or changing the catalog, the rotation or which photos exist. */
@@ -71,11 +73,17 @@ class PhotoStore(private val root: File) {
             .forEach(File::delete)
     }
 
-    fun readCatalog(): Catalog {
+    fun readCatalog(): Catalog = readCatalogOrNull() ?: Catalog()
+
+    /**
+     * Null when there's no catalog or it can't be read (e.g. damaged by a power cut on older firmware).
+     * The syncer then fetches the whole feed again instead of trusting "not modified".
+     */
+    fun readCatalogOrNull(): Catalog? {
         val file = File(root, CATALOG)
         val stamp = if (file.exists()) file.lastModified() xor file.length() else 0L
         cachedCatalog?.let { catalog -> if (stamp == cachedCatalogStamp) return catalog }
-        val catalog = readJson(CATALOG, Catalog.serializer()) ?: Catalog()
+        val catalog = readJson(CATALOG, Catalog.serializer()) ?: return null
         cachedCatalog = catalog
         cachedCatalogStamp = stamp
         return catalog
@@ -106,8 +114,11 @@ class PhotoStore(private val root: File) {
 
     private fun <T> writeJson(name: String, serializer: KSerializer<T>, value: T) {
         val temp = File(root, "$name.tmp")
-        temp.writeText(json.encodeToString(serializer, value))
-        temp.renameTo(File(root, name))
+        FileOutputStream(temp).use { output ->
+            output.write(json.encodeToString(serializer, value).encodeToByteArray())
+            output.fd.sync()
+        }
+        if (!temp.renameTo(File(root, name))) throw IOException("Couldn't save $name")
     }
 
     private companion object {

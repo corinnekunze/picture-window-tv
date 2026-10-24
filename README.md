@@ -44,6 +44,18 @@ the next few minutes. **To undo everything:** `TV_HOST=192.168.1.50 scripts/rest
    on it, and network debugging isn't encrypted. Picture Window doesn't need it. Turn it back on only
    to run `restore-tv.sh` or a later setup.
 
+### How the photos change
+
+- The screensaver shows a new photo every 3 minutes, and never the same one twice in a row.
+- The TV keeps about 2 GB of photos (roughly 350 with their 4K videos). The feed has more: each
+  month's batch, for six months. Every day the TV swaps the photos it has already shown for ones it
+  hasn't, so you work through the whole feed, and photos you haven't seen always come first.
+- A new month's photos arrive within a day of being published and are shown before any repeats.
+- If you've seen everything in the feed, the TV stops downloading and reshows what it has, in a
+  different order each time, until the next month adds new photos.
+- If the TV is offline, it keeps showing the photos it has. A photo taken out of the feed leaves the
+  TV at its next daily check.
+
 ### Updating
 
 When a new version is out, the TV finds out at its daily check: Picture Window's settings screen

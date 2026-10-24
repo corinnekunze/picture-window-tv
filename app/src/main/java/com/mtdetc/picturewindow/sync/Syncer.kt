@@ -1,5 +1,6 @@
 package com.mtdetc.picturewindow.sync
 
+import com.mtdetc.picturewindow.feed.BatchRef
 import com.mtdetc.picturewindow.feed.DownloadOutcome
 import com.mtdetc.picturewindow.feed.FeedClient
 import com.mtdetc.picturewindow.feed.FeedIndex
@@ -20,8 +21,10 @@ data class SyncResult(val complete: Boolean, val downloaded: Int, val corrupt: I
 
 /**
  * One sync: refresh the catalog from the feed (skipped on 304), drop revoked and stale photos, then
- * download within the budget. Any problem with the index or a manifest keeps the old catalog: fail
- * closed. A single bad photo is skipped, not fatal.
+ * download within the budget. A problem with the index keeps the old catalog: fail closed. A batch
+ * whose manifest can't be read or doesn't match keeps the photos it had (they were checked when they
+ * arrived), and revocations apply regardless, so one bad batch never holds back the others or a
+ * removal. The sync then counts as unfinished and tries again. A single bad photo is skipped, not fatal.
  *
  * When [wantVideos] (the TV can decode 4K HEVC), each photo's video comes with it, budgeted with the
  * image. A missing or bad video only costs the 4K version; the screensaver falls back to the image.
@@ -49,8 +52,14 @@ class Syncer(
         val previous = store.readSyncState()
         val attemptAt = clock()
         return try {
-            refreshCatalog(feedUrl, previous.takeIf { state -> state.feedUrl == feedUrl }?.etag)
-            val result = fillCache(shouldContinue)
+            // A missing or unreadable catalog can't be trusted to be "not modified": fetch it all again.
+            val etag = previous.etag.takeIf { previous.feedUrl == feedUrl && store.readCatalogOrNull() != null }
+            val failedBatches = refreshCatalog(feedUrl, etag)
+            val filled = fillCache(shouldContinue)
+            val result = if (failedBatches.isEmpty()) filled else filled.copy(
+                complete = false,
+                message = filled.message + "; couldn't read batch ${failedBatches.joinToString()}, kept its photos",
+            )
             val state = store.readSyncState().copy(lastAttemptAt = attemptAt, lastMessage = result.message)
             // A sync stopped partway isn't a success, so the TV still counts as stale and tries again.
             store.writeSyncState(if (result.complete) state.copy(lastSuccessAt = clock()) else state)
@@ -62,28 +71,40 @@ class Syncer(
         }
     }
 
-    private fun refreshCatalog(feedUrl: String, etag: String?) {
+    /** Returns the batches whose manifest couldn't be used this time. */
+    private fun refreshCatalog(feedUrl: String, etag: String?): List<String> {
         val result = client.fetchIndex(feedUrl, etag)
-        if (result !is IndexResult.Fetched) return
-        val catalog = buildCatalog(feedUrl, result.index)
+        if (result !is IndexResult.Fetched) return emptyList()
+        val failedBatches = mutableListOf<String>()
+        val catalog = buildCatalog(feedUrl, result.index, store.readCatalog(), failedBatches)
         synchronized(store.lock) {
             store.writeCatalog(catalog)
             pruneRotationHistory(catalog)
-            store.writeSyncState(store.readSyncState().copy(feedUrl = feedUrl, etag = result.etag))
+            // Without the ETag the next sync fetches everything again, so the failed batches get retried.
+            val savedEtag = if (failedBatches.isEmpty()) result.etag else null
+            store.writeSyncState(store.readSyncState().copy(feedUrl = feedUrl, etag = savedEtag))
         }
+        return failedBatches
     }
 
-    private fun buildCatalog(feedUrl: String, index: FeedIndex): Catalog {
+    private fun buildCatalog(feedUrl: String, index: FeedIndex, previous: Catalog, failedBatches: MutableList<String>): Catalog {
         val revoked = index.revoked.toSet()
         val seenIds = mutableSetOf<String>()
         val entries = index.batches.sortedByDescending { batch -> batch.id }.flatMap { batch ->
-            val manifest = client.fetchManifest(URI(feedUrl).resolve(batch.manifest).toString(), batch.sha256)
-            manifest.items
+            batchItems(feedUrl, batch, previous, failedBatches)
                 .filter { item -> item.id !in revoked && seenIds.add(item.id) }
                 .map { item -> CatalogEntry(batch.id, item) }
         }
         return Catalog(entries)
     }
+
+    private fun batchItems(feedUrl: String, batch: BatchRef, previous: Catalog, failedBatches: MutableList<String>): List<FeedItem> =
+        try {
+            client.fetchManifest(URI(feedUrl).resolve(batch.manifest).toString(), batch.sha256).items
+        } catch (error: Exception) {
+            failedBatches += batch.id
+            previous.entries.filter { entry -> entry.batch == batch.id }.map { entry -> entry.item }
+        }
 
     private fun pruneRotationHistory(catalog: Catalog) {
         val catalogIds = catalog.entries.map { entry -> entry.item.id }.toSet()
