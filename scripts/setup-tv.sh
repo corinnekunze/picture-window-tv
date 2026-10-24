@@ -108,6 +108,10 @@ report() {
   echo "then the screensaver shows the ones it has. To try it now:"
   echo "  adb -s $ANDROID_SERIAL shell am start -n com.android.systemui/.Somnambulator"
   echo "To undo everything: TV_HOST=$TV_HOST scripts/restore-tv.sh   (add --dry-run to preview)"
+  echo
+  echo "Now turn debugging off on the TV: Settings > System > Developer options > USB debugging (and"
+  echo "Network debugging) off. Picture Window doesn't need it, and while it's on, computers the TV has"
+  echo "allowed can control it. Turn it back on only to run restore-tv.sh or setup again."
 }
 
 main() {

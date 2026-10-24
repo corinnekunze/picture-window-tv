@@ -33,7 +33,12 @@ The script backs the TV up first (`~/.picture-window-tv/backups/`), installs the
 in the background (on TCL TVs that needs TCL's `APP_AUTO_START` permission, which the script grants
 for this app only) and makes Picture Window the screensaver. The photos, about 2 GB, download over
 the next few minutes. **To undo everything:** `TV_HOST=192.168.1.50 scripts/restore-tv.sh` (see
-[UNDO.md](UNDO.md)). Turn USB debugging off again afterwards if you like; Picture Window doesn't need it.
+[UNDO.md](UNDO.md)).
+
+4. **Turn debugging off again:** Settings → System → Developer options → USB debugging (and Network
+   debugging) off. While it's on, any computer the TV has allowed can install apps and change settings
+   on it, and network debugging isn't encrypted. Picture Window doesn't need it. Turn it back on only
+   to run `restore-tv.sh` or a later setup.
 
 ### With CleanYourTV
 
@@ -41,6 +46,31 @@ the next few minutes. **To undo everything:** `TV_HOST=192.168.1.50 scripts/rest
 its credit, as its wallpaper: set `"photo_source": "picture_window"` in its theme (its
 `themes/README.md` has the details). Replacing the home screen is the riskier step on some TCL models,
 so read CleanYourTV's notes for your TV first.
+
+## Privacy and security
+
+- **What the app can do:** it asks only for internet access (to download photos) and to be told about
+  a reboot (so its daily check stays scheduled). No account, microphone, location, analytics or ads, and it
+  can't see your other apps.
+- **What it sends:** once a day it asks GitHub whether the photo list changed. Like any web request,
+  that shows GitHub your home's public IP address and the app's name and version. Nothing else about
+  your TV or household leaves it.
+- **What it downloads:** photos and their 4K videos from GitHub, over HTTPS only. Each file is checked
+  against the fingerprint (SHA-256) in the photo list before it's used; a damaged or swapped file is
+  thrown away.
+- **What other apps on the TV can read:** the photo on screen now, its credit and when it changes,
+  read-only. That's how [CleanYourTV](#with-cleanyourtv)'s home screen shows the same photo. It's only
+  the public photos and credits the feed already publishes.
+- **Which photos appear:** photos come from Wikimedia Commons under free licences, and every month's
+  batch is reviewed by hand before it's published. The feed's rules keep it family-friendly: distant
+  crowds are fine, close-up portraits and anything grim are not. If a photo that shouldn't be there
+  gets through anyway, removing it from the feed takes it off every TV at its next daily check, as
+  long as the TV is on and online.
+- **Trusting the APK:** it's built from this repo and signed with the same release key every time
+  (see [RELEASING.md](RELEASING.md)), and each release lists the APK's SHA-256 so you can check your
+  download (`shasum -a 256 picture-window-<version>.apk`).
+- **On TCL TVs** the setup grants TCL's `APP_AUTO_START` permission to this app only, so its daily
+  check can run in the background. Uninstalling removes it.
 
 ## Developer setup
 
