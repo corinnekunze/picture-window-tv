@@ -29,8 +29,10 @@ class SyncJobService : JobService() {
     }
 
     private fun runSync(params: JobParameters, stopRequested: AtomicBoolean) {
-        val result = PictureWindowApp.from(this).syncer.sync(AppSettings(this).feedUrl) { !stopRequested.get() }
+        val app = PictureWindowApp.from(this)
+        val result = app.syncer.sync(AppSettings(this).feedUrl) { !stopRequested.get() }
         Log.i(TAG, "Job ${params.jobId}: ${result.message}")
+        if (!stopRequested.get()) app.updates.check()
         if (stopRequested.get()) return
         stopFlags.remove(params.jobId)
         jobFinished(params, !result.complete)

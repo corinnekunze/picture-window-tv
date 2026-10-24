@@ -14,4 +14,13 @@
     <string name="sync_started">Sync started</string>
     <string name="status">%1$d of %2$d photos on this TV · %3$s</string>
     <string name="screensaver_help">To use the screensaver, pick Picture Window under Settings → System → Ambient mode (or Screensaver). Some TVs hide that choice; see the install guide.</string>
+    <string name="version">Version %1$s</string>
+    <string name="update">Update</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_downloading">Downloading version %1$s…</string>
+    <string name="update_failed">The download didn\'t work. Check the TV\'s internet connection and try again.</string>
+    <string name="update_allow_installs">Allow Picture Window to install updates, then come back and press Update again.</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_notification_title">Picture Window %1$s is available</string>
+    <string name="update_notification_text">Open Picture Window from your apps to update.</string>
 </resources>

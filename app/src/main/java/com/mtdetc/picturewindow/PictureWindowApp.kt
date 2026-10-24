@@ -9,13 +9,16 @@ import com.mtdetc.picturewindow.settings.AppSettings
 import com.mtdetc.picturewindow.store.PhotoStore
 import com.mtdetc.picturewindow.sync.SyncScheduler
 import com.mtdetc.picturewindow.sync.Syncer
+import com.mtdetc.picturewindow.update.UpdateChecker
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 class PictureWindowApp : Application() {
     val store by lazy { PhotoStore(filesDir) }
     val library by lazy { PhotoLibrary(store, Rotation(), intervalMs = { AppSettings(this).rotationIntervalMs }) }
-    val syncer by lazy { Syncer(store, FeedClient(httpClient()), ::cacheBudgetBytes, wantVideos = { VideoSupport.canPlay4k }) }
+    val feedClient by lazy { FeedClient(httpClient()) }
+    val syncer by lazy { Syncer(store, feedClient, ::cacheBudgetBytes, wantVideos = { VideoSupport.canPlay4k }) }
+    val updates by lazy { UpdateChecker(this, feedClient) }
 
     override fun onCreate() {
         super.onCreate()

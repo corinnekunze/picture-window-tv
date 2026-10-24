@@ -9,6 +9,11 @@ Before each release, bump `pictureWindowVersionCode` (by one) and `pictureWindow
 `gradle.properties`. `build` refuses uncommitted changes, and `publish` refuses a version that's
 already released.
 
+`publish` also attaches `update.json` (version, APK URL, size, SHA-256). Installed TVs read it from
+`releases/latest/download/update.json` at their daily check and offer the update on the settings
+screen and as a notification. So publishing is the push: there's no other step. Mark a release as a
+pre-release (or a draft) to keep it from TVs, since "latest" skips those.
+
 ## The release key
 
 Android only installs an update over an app when both are signed with the same key. Every release

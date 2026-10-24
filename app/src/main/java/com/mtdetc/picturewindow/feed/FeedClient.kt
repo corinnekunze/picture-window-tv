@@ -62,6 +62,17 @@ class FeedClient(private val http: OkHttpClient) {
         return finish(remote, partial, target)
     }
 
+    /** A small file such as update.json, or null when it isn't there (404). Throws on other errors. */
+    fun fetchSmallText(url: String, maxBytes: Int = 16 * 1024): String? =
+        http.newCall(baseRequest(url).build()).execute().use { response ->
+            if (response.code == 404) return null
+            requireSuccess(response, url)
+            val source = response.body!!.source()
+            // request() buffers up to that many bytes and says whether they were all there.
+            if (source.request(maxBytes + 1L)) throw IOException("$url is larger than $maxBytes bytes")
+            source.buffer.readUtf8()
+        }
+
     private fun resumableLength(remote: RemoteFile, partial: File): Long {
         if (!partial.exists()) return 0
         if (partial.length() <= remote.bytes) return partial.length()

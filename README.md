@@ -40,6 +40,15 @@ the next few minutes. **To undo everything:** `TV_HOST=192.168.1.50 scripts/rest
    on it, and network debugging isn't encrypted. Picture Window doesn't need it. Turn it back on only
    to run `restore-tv.sh` or a later setup.
 
+### Updating
+
+When a new version is out, the TV finds out at its daily check: Picture Window's settings screen
+(open Picture Window from your apps) shows "Version … is available" with an **Update** button, and
+the TV shows one notification (on Google TV, under Settings → Notifications). The screensaver never
+shows it. Press Update and confirm Android's prompt; the first time, Android asks you to allow
+Picture Window to install updates. Photos and settings stay, and no computer or debugging is needed.
+Android only accepts an update signed with the same key as the installed app.
+
 ### With CleanYourTV
 
 [CleanYourTV](https://github.com/corinnekunze/cleanyourtv)'s home screen can show the same photo, with
@@ -69,6 +78,10 @@ so read CleanYourTV's notes for your TV first.
 - **Trusting the APK:** it's built from this repo and signed with the same release key every time
   (see [RELEASING.md](RELEASING.md)), and each release lists the APK's SHA-256 so you can check your
   download (`shasum -a 256 picture-window-<version>.apk`).
+- **Updates:** the daily check also reads `update.json` from this repo's latest release. The app only
+  downloads an update when you press Update, checks it against that file's SHA-256, and Android
+  installs it only after you confirm and only if it carries the same signature. For that, Android
+  asks once to let Picture Window install apps; it can't install anything else on its own.
 - **On TCL TVs** the setup grants TCL's `APP_AUTO_START` permission to this app only, so its daily
   check can run in the background. Uninstalling removes it.
 

@@ -26,6 +26,31 @@
             android:textColor="#B8C0CC"
             android:textSize="16sp" />
 
+        <!-- Shown only when a newer release is out (UpdateChecker). -->
+        <LinearLayout
+            android:id="@+id/update_row"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/update_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/update" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -80,5 +105,13 @@
             android:text="@string/screensaver_help"
             android:textColor="#B8C0CC"
             android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="#7D8694"
+            android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>

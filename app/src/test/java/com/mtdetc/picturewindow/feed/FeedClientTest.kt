@@ -75,4 +75,20 @@ class FeedClientTest {
         assertFalse(partial.exists())
         assertFalse(target.exists())
     }
+
+    @Test
+    fun `reads a small file and treats a missing one as absent`() {
+        server.enqueue(MockResponse().setBody("""{"versionCode":2}"""))
+        assertEquals("""{"versionCode":2}""", client.fetchSmallText(server.url("/update.json").toString()))
+        server.enqueue(MockResponse().setResponseCode(404))
+        assertEquals(null, client.fetchSmallText(server.url("/update.json").toString()))
+    }
+
+    @Test
+    fun `refuses a small file that turns out large`() {
+        server.enqueue(MockResponse().setBody("x".repeat(100)))
+        assertThrows(java.io.IOException::class.java) {
+            client.fetchSmallText(server.url("/update.json").toString(), maxBytes = 50)
+        }
+    }
 }

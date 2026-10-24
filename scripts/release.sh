@@ -5,7 +5,8 @@
 # Usage: scripts/release.sh init-key   # once: make the release key (back it up: losing it means
 #                                      # installed TVs can't take updates)
 #        scripts/release.sh build      # tests, signed APK in dist/, checks it (see RELEASING.md)
-#        scripts/release.sh publish    # GitHub Release v<version> with the APK from build
+#        scripts/release.sh publish    # GitHub Release v<version> with the APK and update.json, which
+#                                      # installed TVs check daily to offer the update
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SIGNING="${PICTURE_WINDOW_SIGNING:-$HOME/.picture-window-tv/signing.properties}"
@@ -14,7 +15,10 @@ ANDROID_HOME="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
 BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
 export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}"
 VERSION="$(sed -n 's/^pictureWindowVersionName=//p' gradle.properties)"
+VERSION_CODE="$(sed -n 's/^pictureWindowVersionCode=//p' gradle.properties)"
+REPO=corinnekunze/picture-window-tv
 APK="dist/picture-window-$VERSION.apk"
+UPDATE_JSON=dist/update.json
 
 init_key() {
   if [ -e "$SIGNING" ]; then
@@ -54,6 +58,15 @@ check_apk() {
   fi
 }
 
+# What installed TVs read to offer the update (UpdateChecker); its url must point into this repo's releases.
+write_update_json() {
+  local bytes sha
+  bytes="$(stat -f %z "$APK" 2>/dev/null || stat -c %s "$APK")"
+  sha="$(cut -d' ' -f1 "$APK.sha256")"
+  printf '{"versionCode":%s,"versionName":"%s","url":"https://github.com/%s/releases/download/v%s/%s","bytes":%s,"sha256":"%s"}\n' \
+    "$VERSION_CODE" "$VERSION" "$REPO" "$VERSION" "$(basename "$APK")" "$bytes" "$sha" > "$UPDATE_JSON"
+}
+
 build() {
   [ -f "$SIGNING" ] || { echo "No release key; run: scripts/release.sh init-key" >&2; exit 1; }
   require_clean_tree
@@ -62,6 +75,7 @@ build() {
   cp app/build/outputs/apk/release/app-release.apk "$APK"
   check_apk "$APK"
   shasum -a 256 "$APK" | tee "$APK.sha256"
+  write_update_json
   echo "Built $APK ($(du -h "$APK" | cut -f1)) from $(git rev-parse --short HEAD)."
 }
 
@@ -69,11 +83,12 @@ publish() {
   [ -f "$APK" ] || { echo "No $APK; run: scripts/release.sh build" >&2; exit 1; }
   require_clean_tree
   check_apk "$APK"
-  if gh release view "v$VERSION" >/dev/null 2>&1; then
+  if gh release view "v$VERSION" -R "$REPO" >/dev/null 2>&1; then
     echo "v$VERSION is already released; bump pictureWindowVersionName and pictureWindowVersionCode." >&2
     exit 1
   fi
-  gh release create "v$VERSION" "$APK" "$APK.sha256" --target "$(git rev-parse HEAD)" \
+  [ -f "$UPDATE_JSON" ] || { echo "No $UPDATE_JSON; run: scripts/release.sh build" >&2; exit 1; }
+  gh release create "v$VERSION" "$APK" "$APK.sha256" "$UPDATE_JSON" -R "$REPO" --target "$(git rev-parse HEAD)" \
     --title "Picture Window $VERSION" \
     --notes "Install with scripts/setup-tv.sh (see README). SHA-256 in picture-window-$VERSION.apk.sha256."
 }

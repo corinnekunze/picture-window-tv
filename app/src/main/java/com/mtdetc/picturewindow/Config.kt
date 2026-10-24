@@ -3,7 +3,9 @@ package com.mtdetc.picturewindow
 /** Tunables. Anything a viewer can change lives in settings/AppSettings instead. */
 object Config {
     const val DEFAULT_FEED_URL = "https://corinnekunze.github.io/picture-window/index.json"
-    const val USER_AGENT = "PictureWindowTV/0.1 (+https://github.com/corinnekunze/picture-window)"
+    const val USER_AGENT = "PictureWindowTV/${BuildConfig.VERSION_NAME} (+https://github.com/corinnekunze/picture-window)"
+    /** The newest release's description; GitHub redirects "latest" to the newest release. */
+    const val UPDATE_URL = "https://github.com/corinnekunze/picture-window-tv/releases/latest/download/update.json"
     const val PROVIDER_AUTHORITY = "com.mtdetc.picturewindow.photos"
 
     /**
