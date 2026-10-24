@@ -62,11 +62,4 @@ sync whenever the last successful one is more than a day old.
 
 ## Releasing
 
-```sh
-scripts/release.sh init-key   # once; back up ~/.picture-window-tv/keys and signing.properties
-scripts/release.sh build      # tests, signed APK and its SHA-256 in dist/
-scripts/release.sh publish    # GitHub Release v<version> with the APK
-```
-
-Bump `pictureWindowVersionCode` and `pictureWindowVersionName` in `gradle.properties` for each release.
-Losing the key means TVs can't update to new releases, only uninstall and reinstall.
+See [RELEASING.md](RELEASING.md): building and publishing a release, and where the signing key lives.

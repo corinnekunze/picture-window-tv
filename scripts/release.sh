@@ -4,7 +4,7 @@
 #
 # Usage: scripts/release.sh init-key   # once: make the release key (back it up: losing it means
 #                                      # installed TVs can't take updates)
-#        scripts/release.sh build      # tests, signed APK in dist/, checks it
+#        scripts/release.sh build      # tests, signed APK in dist/, checks it (see RELEASING.md)
 #        scripts/release.sh publish    # GitHub Release v<version> with the APK from build
 set -euo pipefail
 cd "$(dirname "$0")/.."
