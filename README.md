@@ -16,33 +16,8 @@ not in any future version. Its only notification is the one telling you a new ve
 
 ## Install on a TV
 
-You need a computer with adb (macOS: `brew install android-platform-tools`) on the same network as
-the TV, once. Google TV hides other apps' screensavers from its menu, so choosing this one takes an
-adb command, and the setup script runs it for you.
-
-1. On the TV: Settings → System → About → press OK on "Android TV OS build" seven times. Then
-   Settings → System → Developer options → turn on USB debugging (on some TVs, Network debugging).
-   Note the TV's IP address (Settings → Network & Internet → your Wi-Fi).
-2. Download `picture-window-<version>.apk` from the [latest release](../../releases/latest).
-3. Run, with the TV's IP address:
-
-   ```sh
-   TV_HOST=192.168.1.50 scripts/setup-tv.sh --dry-run --apk picture-window-0.1.0.apk   # preview
-   TV_HOST=192.168.1.50 scripts/setup-tv.sh --apk picture-window-0.1.0.apk
-   ```
-
-   The first time, the TV asks to allow debugging from this computer: tick "Always allow" and accept.
-
-The script backs the TV up first (`~/.picture-window-tv/backups/`), installs the app, lets it sync
-in the background (on TCL TVs that needs TCL's `APP_AUTO_START` permission, which the script grants
-for this app only) and makes Picture Window the screensaver. The photos, about 2 GB, download over
-the next few minutes. **To undo everything:** `TV_HOST=192.168.1.50 scripts/restore-tv.sh` (see
-[UNDO.md](UNDO.md)).
-
-4. **Turn debugging off again:** Settings → System → Developer options → USB debugging (and Network
-   debugging) off. While it's on, any computer the TV has allowed can install apps and change settings
-   on it, and network debugging isn't encrypted. Picture Window doesn't need it. Turn it back on only
-   to run `restore-tv.sh` or a later setup.
+See **[INSTALL.md](INSTALL.md)**: ask your AI agent with [PROMPT.md](PROMPT.md), or do it yourself in a
+few steps. You need a computer once; after that, not even for updates.
 
 ### How the photos change
 

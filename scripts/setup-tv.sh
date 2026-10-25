@@ -9,23 +9,27 @@
 #   --replace   uninstall a copy signed with another key first (e.g. a developer build). That deletes
 #               its downloaded photos; they download again.
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source scripts/tv-common.sh
 MIN_SDK=26
 DRY_RUN=false
 REPLACE=false
 APK=""
 WAS_INSTALLED=false
 
+# Read the options before moving into the repo, so --apk can be relative to where you ran this.
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=true ;;
     --replace) REPLACE=true ;;
-    --apk) APK="${2:?--apk needs a file}"; shift ;;
+    --apk)
+      APK="${2:?--apk needs a file}"
+      [ -f "$APK" ] && APK="$(cd "$(dirname "$APK")" && pwd)/$(basename "$APK")"
+      shift ;;
     *) sed -n '2,12p' "$0" >&2; exit 2 ;;
   esac
   shift
 done
+cd "$(dirname "$0")/.."
+source scripts/tv-common.sh
 
 run_on_tv() {
   echo "+ adb $*"
