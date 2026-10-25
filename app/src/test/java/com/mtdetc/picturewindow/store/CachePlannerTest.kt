@@ -9,8 +9,13 @@ class CachePlannerTest {
     private fun downloads(steps: List<CacheStep>) =
         steps.filterIsInstance<CacheStep.Download>().map { step -> step.item.id }
 
-    private fun evictions(steps: List<CacheStep>) =
-        steps.filterIsInstance<CacheStep.Evict>().map { step -> step.id }
+    /** Everything the steps delete, at once or after a download. */
+    private fun evictions(steps: List<CacheStep>) = steps.flatMap { step ->
+        when (step) {
+            is CacheStep.Evict -> listOf(step.id)
+            is CacheStep.Download -> step.makeRoom
+        }
+    }
 
     @Test
     fun `fills the budget newest batch first`() {
@@ -25,7 +30,7 @@ class CachePlannerTest {
         val cached = setOf("a", "b", "c")
         val lastShown = mapOf("a" to 1L, "b" to 3L, "c" to 2L)
         val steps = CachePlanner.plan(catalog, cached, lastShown, currentId = "a", budgetBytes = 300)
-        assertEquals(listOf(CacheStep.Evict("b"), CacheStep.Download(catalog.entries[3].item)), steps)
+        assertEquals("b goes only once the unseen photo has arrived", listOf(CacheStep.Download(catalog.entries[3].item, makeRoom = listOf("b"))), steps)
     }
 
     @Test

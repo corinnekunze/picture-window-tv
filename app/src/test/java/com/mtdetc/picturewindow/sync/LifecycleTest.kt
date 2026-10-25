@@ -216,6 +216,34 @@ class LifecycleTest {
         assertEquals(5, watch(5).toSet().size)
     }
 
+    @Test
+    fun `a new month whose photos won't download costs the TV nothing`() {
+        val october = photos("2026-10", 10)
+        publish(mapOf("2026-10" to october))
+        sync()
+        watch(10)
+
+        val november = photos("2026-11", 6)
+        november.forEach { photo -> files.remove("/${photo.id}.webp") }
+        publish(mapOf("2026-10" to october, "2026-11" to november))
+        repeat(5) { sync() }
+        assertEquals("still has every October photo", 10, store.cachedPhotos().size)
+    }
+
+    @Test
+    fun `a new month whose photos fail their checksum costs the TV nothing`() {
+        val october = photos("2026-10", 10)
+        publish(mapOf("2026-10" to october))
+        sync()
+        watch(10)
+
+        val november = photos("2026-11", 6)
+        november.forEach { photo -> files["/${photo.id}.webp"] = ByteArray(PHOTO_BYTES.toInt()) }
+        publish(mapOf("2026-10" to october, "2026-11" to november))
+        repeat(5) { sync() }
+        assertEquals("still has every October photo", 10, store.cachedPhotos().size)
+    }
+
     private companion object {
         const val PHOTO_BYTES = 200L
         const val INTERVAL_MS = 3 * 60 * 1000L

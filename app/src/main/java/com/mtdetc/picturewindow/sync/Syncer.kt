@@ -126,6 +126,7 @@ class Syncer(
                 is CacheStep.Download -> when (downloadImage(step.item)) {
                     DownloadOutcome.SAVED -> {
                         downloaded++
+                        step.makeRoom.forEach(::evict)
                         if (withVideos && downloadVideo(step.item) == DownloadOutcome.CORRUPT) {
                             corrupt++
                             badVideoIds += step.item.id

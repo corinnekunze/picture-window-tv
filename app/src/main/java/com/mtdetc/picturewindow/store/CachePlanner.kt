@@ -3,8 +3,14 @@ package com.mtdetc.picturewindow.store
 import com.mtdetc.picturewindow.feed.FeedItem
 
 sealed interface CacheStep {
+    /** Delete now: revoked, gone from the feed, or over the budget. */
     data class Evict(val id: String) : CacheStep
-    data class Download(val item: FeedItem) : CacheStep
+
+    /**
+     * Download [item], then delete [makeRoom] to make space for it, but only once it has arrived and
+     * passed its check: a download that fails must never cost the TV a photo.
+     */
+    data class Download(val item: FeedItem, val makeRoom: List<String> = emptyList()) : CacheStep
 }
 
 /**
@@ -16,8 +22,8 @@ sealed interface CacheStep {
  * Sizes come from [sizeOf], so a TV that also keeps each photo's video budgets for both files. A TV
  * already over the budget (it just started keeping videos, or the budget shrank) evicts down to it:
  * shown photos first, most recently shown first, then unseen ones from the oldest batch.
- * Steps come in order: each eviction sits just before the download it makes room for, so a failed
- * download never costs more than the space it was given.
+ * Photos that make room for a download go only after it succeeds (see [CacheStep.Download]), so
+ * the TV holds one extra photo for a moment instead of losing one when a download fails.
  */
 object CachePlanner {
 
@@ -38,13 +44,14 @@ object CachePlanner {
         val uncached = catalog.entries.map { entry -> entry.item }.filter { item -> item.id !in cachedIds }
 
         for (item in uncached.filter { item -> item.id !in lastShown }) {
+            val makeRoom = mutableListOf<String>()
             while (usedBytes + sizeOf(item) > budgetBytes && evictable.isNotEmpty()) {
                 val id = evictable.removeFirst()
-                steps += CacheStep.Evict(id)
+                makeRoom += id
                 usedBytes -= sizeOf(itemsById.getValue(id))
             }
             if (usedBytes + sizeOf(item) > budgetBytes) break
-            steps += CacheStep.Download(item)
+            steps += CacheStep.Download(item, makeRoom)
             usedBytes += sizeOf(item)
         }
 
