@@ -8,6 +8,8 @@
     <string name="dream_waiting">Picture Window is downloading photos…</string>
     <string name="feed_url_label">Feed URL</string>
     <string name="show_clock">Show the clock on the screensaver</string>
+    <string name="new_photos">Get new photos each month</string>
+    <string name="new_photos_help">Off keeps the photos already on this TV. Photos taken out of the feed still leave at the daily check.</string>
     <string name="save">Save</string>
     <string name="sync_now">Sync now</string>
     <string name="saved">Saved</string>

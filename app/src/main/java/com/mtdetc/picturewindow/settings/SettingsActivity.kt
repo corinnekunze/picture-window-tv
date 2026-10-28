@@ -22,7 +22,7 @@ import com.mtdetc.picturewindow.update.AppUpdate
 import com.mtdetc.picturewindow.update.UpdateInstaller
 
 /**
- * Feed URL, clock on or off, sync status and a "Sync now" button. Also the screensaver's settings,
+ * Feed URL, clock on or off, new photos on or off, sync status and a "Sync now" button. Also the screensaver's settings,
  * and the one place a newer version is offered: an Update button that downloads it and opens
  * Android's install prompt.
  */
@@ -30,6 +30,7 @@ class SettingsActivity : Activity() {
     private lateinit var settings: AppSettings
     private lateinit var feedUrl: EditText
     private lateinit var showClock: CheckBox
+    private lateinit var newPhotos: CheckBox
     private lateinit var status: TextView
     private lateinit var updateRow: View
     private lateinit var updateStatus: TextView
@@ -44,6 +45,8 @@ class SettingsActivity : Activity() {
         status = findViewById(R.id.status)
         feedUrl.setText(settings.feedUrl)
         showClock.isChecked = settings.showClock
+        newPhotos = findViewById(R.id.new_photos)
+        newPhotos.isChecked = !settings.keepCurrentPhotos
         findViewById<Button>(R.id.save).setOnClickListener { save() }
         findViewById<Button>(R.id.sync_now).setOnClickListener { syncNow() }
         updateRow = findViewById(R.id.update_row)
@@ -61,8 +64,12 @@ class SettingsActivity : Activity() {
     }
 
     private fun save() {
+        val resumingNewPhotos = settings.keepCurrentPhotos && newPhotos.isChecked
         settings.feedUrl = feedUrl.text.toString()
         settings.showClock = showClock.isChecked
+        settings.keepCurrentPhotos = !newPhotos.isChecked
+        // Turning new photos back on shouldn't wait for tomorrow's check.
+        if (resumingNewPhotos) SyncScheduler.syncSoon(this, delayMs = 0)
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
     }
 

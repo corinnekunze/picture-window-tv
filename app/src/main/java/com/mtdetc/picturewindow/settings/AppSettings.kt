@@ -15,6 +15,11 @@ class AppSettings(context: Context) {
         get() = preferences.getBoolean(KEY_SHOW_CLOCK, true)
         set(value) = preferences.edit().putBoolean(KEY_SHOW_CLOCK, value).apply()
 
+    /** Off by default. On, the TV keeps the photos it has and stops getting new ones (see Syncer). */
+    var keepCurrentPhotos: Boolean
+        get() = preferences.getBoolean(KEY_KEEP_CURRENT_PHOTOS, false)
+        set(value) = preferences.edit().putBoolean(KEY_KEEP_CURRENT_PHOTOS, value).apply()
+
     /** Not on the settings screen; debug builds can shorten it for testing (see DebugReceiver). */
     var rotationIntervalMs: Long
         get() = preferences.getLong(KEY_ROTATION_INTERVAL_MS, Config.ROTATION_INTERVAL_MS)
@@ -25,6 +30,7 @@ class AppSettings(context: Context) {
     private companion object {
         const val KEY_FEED_URL = "feed_url"
         const val KEY_SHOW_CLOCK = "show_clock"
+        const val KEY_KEEP_CURRENT_PHOTOS = "keep_current_photos"
         const val KEY_ROTATION_INTERVAL_MS = "rotation_interval_ms"
     }
 }

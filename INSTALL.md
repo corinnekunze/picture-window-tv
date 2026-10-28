@@ -84,7 +84,8 @@ Picture Window doesn't need it, and while it's on, any computer the TV has allow
   **Settings → System → Ambient mode** (or **Energy**) on most Google TVs.
 - To see it now, leave the TV alone, or open **Picture Window** from your apps, which also shows how
   many photos it has and lets you turn the clock off.
-- A new photo every 3 minutes, and new photos every month. [How the photos change](README.md#how-the-photos-change).
+- A new photo every 3 minutes, and new photos every month. To keep the photos you have instead,
+  untick **Get new photos each month** in Picture Window. [How the photos change](README.md#how-the-photos-change).
 
 ## Updating
 

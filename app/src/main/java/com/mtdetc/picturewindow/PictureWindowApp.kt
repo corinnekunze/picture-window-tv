@@ -17,7 +17,15 @@ class PictureWindowApp : Application() {
     val store by lazy { PhotoStore(filesDir) }
     val library by lazy { PhotoLibrary(store, Rotation(), intervalMs = { AppSettings(this).rotationIntervalMs }) }
     val feedClient by lazy { FeedClient(httpClient()) }
-    val syncer by lazy { Syncer(store, feedClient, ::cacheBudgetBytes, wantVideos = { VideoSupport.canPlay4k }) }
+    val syncer by lazy {
+        Syncer(
+            store,
+            feedClient,
+            ::cacheBudgetBytes,
+            wantVideos = { VideoSupport.canPlay4k },
+            keepCurrentPhotos = { AppSettings(this).keepCurrentPhotos },
+        )
+    }
     val updates by lazy { UpdateChecker(this, feedClient) }
 
     override fun onCreate() {

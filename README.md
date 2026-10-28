@@ -30,6 +30,10 @@ few steps. You need a computer once; after that, not even for updates.
   different order each time, until the next month adds new photos.
 - If the TV is offline, it keeps showing the photos it has. A photo taken out of the feed leaves the
   TV at its next daily check.
+- **To keep the photos you have,** open Picture Window from your apps and untick **Get new photos each
+  month**. The TV stops downloading and keeps reshowing what it has, even photos older than the feed's
+  six months. The daily check still runs, so a photo taken out of the feed still leaves, and you still
+  hear about app updates. Tick it again to get new photos the same day.
 
 ### Updating
 

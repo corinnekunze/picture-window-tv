@@ -58,6 +58,10 @@ class SyncerTest {
 
     private fun videoSyncer() = Syncer(store, FeedClient(OkHttpClient()), budgetBytes = { 10_000 }, wantVideos = { true })
 
+    private fun frozenSyncer(withVideos: Boolean = false) = Syncer(
+        store, FeedClient(OkHttpClient()), budgetBytes = { 10_000 }, wantVideos = { withVideos }, keepCurrentPhotos = { true },
+    )
+
     private fun publish(items: List<FeedItem>, revoked: List<String> = emptyList()) {
         val manifest = """{"schema":1,"batch":"2026-10","published":"p","items":${Json.encodeToString(items)}}"""
         files["/batches/2026-10.json"] = manifest.encodeToByteArray()
@@ -155,5 +159,64 @@ class SyncerTest {
         val result = syncer.sync(indexUrl(), shouldContinue = { false })
         assertFalse(result.complete)
         assertEquals(0L, store.readSyncState().lastSuccessAt)
+    }
+
+    @Test
+    fun `keeping current photos downloads nothing new`() {
+        val first = listOf(photo("wmc-1"), photo("wmc-2"))
+        publish(first)
+        syncer.sync(indexUrl())
+        publish(first + photo("wmc-3"))
+        val result = frozenSyncer().sync(indexUrl())
+        assertTrue(result.complete)
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
+        assertTrue(result.message.contains("new photos are off"))
+    }
+
+    @Test
+    fun `keeping current photos still removes revoked photos`() {
+        val first = listOf(photo("wmc-1"), photo("wmc-2"))
+        publish(first)
+        syncer.sync(indexUrl())
+        publish(first, revoked = listOf("wmc-1"))
+        frozenSyncer().sync(indexUrl())
+        assertEquals(setOf("wmc-2"), store.cachedPhotos())
+    }
+
+    @Test
+    fun `keeping current photos keeps photos that left the feed`() {
+        publish(listOf(photo("wmc-1"), photo("wmc-2")))
+        syncer.sync(indexUrl())
+        publish(listOf(photo("wmc-3")))
+        frozenSyncer().sync(indexUrl())
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
+    }
+
+    @Test
+    fun `keeping current photos doesn't fetch videos either`() {
+        publish(listOf(photo("wmc-1")))
+        syncer.sync(indexUrl())
+        publish(listOf(withVideo(photo("wmc-1"))))
+        frozenSyncer(withVideos = true).sync(indexUrl())
+        assertFalse(store.videoFile("wmc-1").exists())
+    }
+
+    @Test
+    fun `turning new photos back on resumes downloads`() {
+        val first = listOf(photo("wmc-1"))
+        publish(first)
+        syncer.sync(indexUrl())
+        publish(first + photo("wmc-2"))
+        frozenSyncer().sync(indexUrl())
+        assertEquals(setOf("wmc-1"), store.cachedPhotos())
+        syncer.sync(indexUrl())
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
+    }
+
+    @Test
+    fun `a TV with no photos yet ignores keeping current photos`() {
+        publish(listOf(photo("wmc-1"), photo("wmc-2")))
+        frozenSyncer().sync(indexUrl())
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
     }
 }

@@ -28,12 +28,19 @@ data class SyncResult(val complete: Boolean, val downloaded: Int, val corrupt: I
  *
  * When [wantVideos] (the TV can decode 4K HEVC), each photo's video comes with it, budgeted with the
  * image. A missing or bad video only costs the 4K version; the screensaver falls back to the image.
+ *
+ * When [keepCurrentPhotos] is on (new photos turned off in settings), the TV keeps the photos it has:
+ * the daily check still reads the index, so revoked photos still leave, but the catalog is cut down to
+ * what's on the TV and nothing is downloaded. Photos whose batch has left the feed's six-month window
+ * stay. A TV with no photos yet ignores the setting, so it never ends up with an empty screensaver.
+ * The ETag isn't kept while frozen, so turning new photos back on rebuilds the catalog from the feed.
  */
 class Syncer(
     private val store: PhotoStore,
     private val client: FeedClient,
     private val budgetBytes: () -> Long,
     private val wantVideos: () -> Boolean = { false },
+    private val keepCurrentPhotos: () -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val running = AtomicBoolean(false)
@@ -52,10 +59,12 @@ class Syncer(
         val previous = store.readSyncState()
         val attemptAt = clock()
         return try {
+            val frozen = keepCurrentPhotos() && store.cachedPhotos().isNotEmpty()
             // A missing or unreadable catalog can't be trusted to be "not modified": fetch it all again.
-            val etag = previous.etag.takeIf { previous.feedUrl == feedUrl && store.readCatalogOrNull() != null }
-            val failedBatches = refreshCatalog(feedUrl, etag)
-            val filled = fillCache(shouldContinue)
+            // A frozen TV always reads the whole index, so revocations reach it every day.
+            val etag = previous.etag.takeIf { !frozen && previous.feedUrl == feedUrl && store.readCatalogOrNull() != null }
+            val failedBatches = refreshCatalog(feedUrl, etag, frozen)
+            val filled = fillCache(shouldContinue, frozen)
             val result = if (failedBatches.isEmpty()) filled else filled.copy(
                 complete = false,
                 message = filled.message + "; couldn't read batch ${failedBatches.joinToString()}, kept its photos",
@@ -72,16 +81,17 @@ class Syncer(
     }
 
     /** Returns the batches whose manifest couldn't be used this time. */
-    private fun refreshCatalog(feedUrl: String, etag: String?): List<String> {
+    private fun refreshCatalog(feedUrl: String, etag: String?, frozen: Boolean): List<String> {
         val result = client.fetchIndex(feedUrl, etag)
         if (result !is IndexResult.Fetched) return emptyList()
         val failedBatches = mutableListOf<String>()
-        val catalog = buildCatalog(feedUrl, result.index, store.readCatalog(), failedBatches)
+        val catalog = if (frozen) frozenCatalog(result.index) else buildCatalog(feedUrl, result.index, store.readCatalog(), failedBatches)
         synchronized(store.lock) {
             store.writeCatalog(catalog)
             pruneRotationHistory(catalog)
-            // Without the ETag the next sync fetches everything again, so the failed batches get retried.
-            val savedEtag = if (failedBatches.isEmpty()) result.etag else null
+            // Without the ETag the next sync fetches everything again, so the failed batches get retried
+            // (and a TV that was frozen rebuilds its catalog from the feed once it isn't).
+            val savedEtag = if (failedBatches.isEmpty() && !frozen) result.etag else null
             store.writeSyncState(store.readSyncState().copy(feedUrl = feedUrl, etag = savedEtag))
         }
         return failedBatches
@@ -98,6 +108,13 @@ class Syncer(
         return Catalog(entries)
     }
 
+    /** The photos already on the TV, minus any the feed has revoked. Nothing new joins. */
+    private fun frozenCatalog(index: FeedIndex): Catalog {
+        val revoked = index.revoked.toSet()
+        val cached = store.cachedPhotos()
+        return Catalog(store.readCatalog().entries.filter { entry -> entry.item.id in cached && entry.item.id !in revoked })
+    }
+
     private fun batchItems(feedUrl: String, batch: BatchRef, previous: Catalog, failedBatches: MutableList<String>): List<FeedItem> =
         try {
             client.fetchManifest(URI(feedUrl).resolve(batch.manifest).toString(), batch.sha256).items
@@ -112,9 +129,11 @@ class Syncer(
         store.writeRotation(rotation.copy(lastShown = rotation.lastShown.filterKeys { id -> id in catalogIds }))
     }
 
-    private fun fillCache(shouldContinue: () -> Boolean): SyncResult {
-        val withVideos = wantVideos()
-        val steps = planSteps(withVideos)
+    private fun fillCache(shouldContinue: () -> Boolean, frozen: Boolean): SyncResult {
+        // Frozen, the plan only removes photos (revoked, or over a shrunken budget); it never downloads,
+        // not even videos for photos that arrived without one.
+        val withVideos = wantVideos() && !frozen
+        val steps = planSteps(withVideos).filter { step -> !frozen || step is CacheStep.Evict }
         var downloaded = 0
         var corrupt = 0
         // Videos that failed their checksum this sync; they get another try on the next one.
@@ -145,6 +164,7 @@ class Syncer(
         val (cachedCount, catalogCount) = synchronized(store.lock) {
             store.cachedPhotos().size to store.readCatalog().entries.size
         }
+        if (frozen) return SyncResult(true, downloaded, corrupt, "Keeping the $cachedCount photos on the TV; new photos are off")
         return SyncResult(true, downloaded, corrupt, "$cachedCount of $catalogCount photos on the TV" + corruptNote(corrupt))
     }
 
