@@ -100,6 +100,15 @@ and the Play Store's), so the daily sync never starts on its own. The `appops` l
 for this app only; uninstalling clears it. Without it, the screensaver and the settings screen start a
 sync whenever the last successful one is more than a day old.
 
+## Usage stats
+
+A daily GitHub Action ([`daily-stats.yml`](.github/workflows/daily-stats.yml)) records how many times the
+APK has been downloaded and how many TVs checked for updates, from the download counters GitHub keeps on
+release files. The app sends nothing extra: every installed TV already fetches `update.json` once a day,
+so the daily rise in those downloads is roughly the number of TVs in use. The numbers are in
+`stats/daily.csv` on the `stats` branch; [`scripts/record-stats.sh`](scripts/record-stats.sh) explains
+each column.
+
 ## Releasing
 
 See [RELEASING.md](RELEASING.md): building and publishing a release, and where the signing key lives.

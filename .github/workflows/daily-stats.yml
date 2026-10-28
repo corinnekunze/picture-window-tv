@@ -1,0 +1,50 @@
+# Once a day, record how many times the app has been downloaded and how many TVs checked for updates,
+# from GitHub's own download counters. The numbers go on the `stats` branch (stats/daily.csv), so the
+# daily commits stay out of main. See scripts/record-stats.sh for what each column means.
+name: Daily stats
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-stats
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the stats branch
+        run: |
+          if git ls-remote --exit-code --heads origin stats >/dev/null; then
+            git fetch origin stats
+            git worktree add stats-branch stats
+          else
+            git worktree add --orphan -b stats stats-branch
+          fi
+          mkdir -p stats-branch/stats
+
+      - name: Record today's numbers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/record-stats.sh stats-branch/stats/daily.csv
+
+      - name: Commit
+        working-directory: stats-branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add stats/daily.csv
+          if git diff --cached --quiet; then
+            echo "No change."
+            exit 0
+          fi
+          git commit -m "Stats for $(date -u +%Y-%m-%d)"
+          git push origin stats
