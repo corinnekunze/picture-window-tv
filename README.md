@@ -110,6 +110,12 @@ so the daily rise in those downloads is roughly the number of TVs in use. The nu
 `stats/daily.csv` on the `stats` branch; [`scripts/record-stats.sh`](scripts/record-stats.sh) explains
 each column.
 
+## Support
+
+Picture Window is free and will stay free: no ads, no subscriptions. If you enjoy it, you can [buy me a coffee](https://buymeacoffee.com/mtdetc).
+
+The photographs are the real gift here. They're shared by the photographers of Wikimedia Commons and hosted by the Wikimedia Foundation, a nonprofit. If Picture Window brightens your room, please consider [donating to Wikimedia](https://donate.wikimedia.org/) too.
+
 ## Releasing
 
 See [RELEASING.md](RELEASING.md): building and publishing a release, and where the signing key lives.
