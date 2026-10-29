@@ -154,6 +154,39 @@ class SyncerTest {
     }
 
     @Test
+    fun `a download that fails doesn't stop the others`() {
+        val broken = photo("wmc-2")
+        files.remove("/wmc-2.webp")
+        publish(listOf(photo("wmc-1"), broken, photo("wmc-3")))
+        val result = syncer.sync(indexUrl())
+        assertFalse(result.complete)
+        assertEquals(setOf("wmc-1", "wmc-3"), store.cachedPhotos())
+        assertEquals(0L, store.readSyncState().lastSuccessAt)
+    }
+
+    @Test
+    fun `a failed video download keeps its photo and the rest`() {
+        val first = withVideo(photo("wmc-1"))
+        files.remove("/wmc-1.mp4")
+        publish(listOf(first, withVideo(photo("wmc-2"))))
+        val result = videoSyncer().sync(indexUrl())
+        assertFalse(result.complete)
+        assertEquals(setOf("wmc-1", "wmc-2"), store.cachedPhotos())
+        assertTrue(store.videoFile("wmc-2").exists())
+    }
+
+    @Test
+    fun `several failures in a row stop the sync`() {
+        val items = (1..5).map { n -> photo("wmc-$n") }
+        items.forEach { item -> files.remove("/${item.id}.webp") }
+        publish(items)
+        val result = syncer.sync(indexUrl())
+        assertFalse(result.complete)
+        assertTrue(result.message.startsWith("Sync failed"))
+        assertEquals(3, server.requestCount - 2)
+    }
+
+    @Test
     fun `a sync stopped partway is not recorded as a success`() {
         publish(listOf(photo("a"), photo("b")))
         val result = syncer.sync(indexUrl(), shouldContinue = { false })

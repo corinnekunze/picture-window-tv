@@ -62,16 +62,16 @@ In a terminal (on Windows, Git Bash or WSL), in the repo folder, with your TV's 
 APK you downloaded:
 
 ```sh
-TV_HOST=192.168.1.50 scripts/setup-tv.sh --dry-run --apk picture-window-0.1.0.apk   # shows what it will do
-TV_HOST=192.168.1.50 scripts/setup-tv.sh --apk picture-window-0.1.0.apk             # does it
+TV_HOST=192.168.1.50 scripts/setup-tv.sh --dry-run --apk picture-window-*.apk   # shows what it will do
+TV_HOST=192.168.1.50 scripts/setup-tv.sh --apk picture-window-*.apk             # does it
 ```
 
 The first time, the TV asks **"Allow USB debugging?"**. Tick **Always allow from this computer** and
 choose **Allow**, then run the command again.
 
 The script backs the TV up to `~/.picture-window-tv/backups/`, installs the app, lets it download in
-the background and makes it the screensaver. The photos, about 2 GB, arrive over the next few
-minutes; until then the screensaver shows the ones it has.
+the background and makes it the screensaver. The photos, about 2 GB, arrive over the next
+10 to 30 minutes, depending on your connection; until then the screensaver shows the ones it has.
 
 ### 4. Turn debugging off again
 

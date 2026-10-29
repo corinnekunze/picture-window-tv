@@ -74,7 +74,8 @@ build() {
   mkdir -p dist
   cp app/build/outputs/apk/release/app-release.apk "$APK"
   check_apk "$APK"
-  shasum -a 256 "$APK" | tee "$APK.sha256"
+  # Named without dist/ so `shasum -a 256 -c` works next to the downloaded APK.
+  (cd "$(dirname "$APK")" && shasum -a 256 "$(basename "$APK")") | tee "$APK.sha256"
   write_update_json
   echo "Built $APK ($(du -h "$APK" | cut -f1)) from $(git rev-parse --short HEAD)."
 }

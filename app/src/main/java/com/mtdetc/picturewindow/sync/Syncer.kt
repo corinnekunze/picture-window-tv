@@ -13,6 +13,7 @@ import com.mtdetc.picturewindow.store.CachePlanner
 import com.mtdetc.picturewindow.store.Catalog
 import com.mtdetc.picturewindow.store.CatalogEntry
 import com.mtdetc.picturewindow.store.PhotoStore
+import java.io.IOException
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -136,36 +137,49 @@ class Syncer(
         val steps = planSteps(withVideos).filter { step -> !frozen || step is CacheStep.Evict }
         var downloaded = 0
         var corrupt = 0
+        var failed = 0
+        var failedInARow = 0
+        // One file failing (a server hiccup) shouldn't hold up the rest: skip it and let the next sync
+        // retry it. Several in a row means the network is down, so stop and retry the whole sync later.
+        fun attempt(download: () -> DownloadOutcome?): DownloadOutcome? = try {
+            download().also { failedInARow = 0 }
+        } catch (error: IOException) {
+            failed++
+            if (++failedInARow >= MAX_FAILURES_IN_A_ROW) throw error
+            null
+        }
         // Videos that failed their checksum this sync; they get another try on the next one.
         val badVideoIds = mutableSetOf<String>()
         for (step in steps) {
             if (!shouldContinue()) return SyncResult(false, downloaded, corrupt, "Stopped early; $downloaded downloaded")
             when (step) {
                 is CacheStep.Evict -> evict(step.id)
-                is CacheStep.Download -> when (downloadImage(step.item)) {
+                is CacheStep.Download -> when (attempt { downloadImage(step.item) }) {
                     DownloadOutcome.SAVED -> {
                         downloaded++
                         step.makeRoom.forEach(::evict)
-                        if (withVideos && downloadVideo(step.item) == DownloadOutcome.CORRUPT) {
+                        if (withVideos && attempt { downloadVideo(step.item) } == DownloadOutcome.CORRUPT) {
                             corrupt++
                             badVideoIds += step.item.id
                         }
                     }
                     DownloadOutcome.CORRUPT -> corrupt++
+                    null -> {}
                 }
             }
         }
         if (withVideos) {
             for (item in photosMissingVideos().filter { item -> item.id !in badVideoIds }) {
                 if (!shouldContinue()) return SyncResult(false, downloaded, corrupt, "Stopped early; $downloaded downloaded")
-                if (downloadVideo(item) == DownloadOutcome.CORRUPT) corrupt++
+                if (attempt { downloadVideo(item) } == DownloadOutcome.CORRUPT) corrupt++
             }
         }
         val (cachedCount, catalogCount) = synchronized(store.lock) {
             store.cachedPhotos().size to store.readCatalog().entries.size
         }
         if (frozen) return SyncResult(true, downloaded, corrupt, "Keeping the $cachedCount photos on the TV; new photos are off")
-        return SyncResult(true, downloaded, corrupt, "$cachedCount of $catalogCount photos on the TV" + corruptNote(corrupt))
+        val failedNote = if (failed == 0) "" else "; $failed downloads failed and will be retried"
+        return SyncResult(failed == 0, downloaded, corrupt, "$cachedCount of $catalogCount photos on the TV" + corruptNote(corrupt) + failedNote)
     }
 
     private fun planSteps(withVideos: Boolean): List<CacheStep> = synchronized(store.lock) {
@@ -201,4 +215,8 @@ class Syncer(
     }
 
     private fun corruptNote(corrupt: Int) = if (corrupt == 0) "" else "; $corrupt failed their checksum and were skipped"
+
+    private companion object {
+        const val MAX_FAILURES_IN_A_ROW = 3
+    }
 }
