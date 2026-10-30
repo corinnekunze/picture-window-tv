@@ -1,3 +1,4 @@
 date,latest_release,apk_downloads,update_checks,apk_downloads_since_last,update_checks_since_last,active_tvs_estimate
 2026-10-28,none,0,0,,,
 2026-10-29,none,0,0,0,0,0
+2026-10-30,v0.1.1,9,8,9,8,8
